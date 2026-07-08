@@ -1,0 +1,37 @@
+import { redirect } from "next/navigation";
+import { CreateUserForm } from "@/components/users/create-user-form";
+import { getCurrentUser } from "@/lib/auth/session";
+
+export default async function UsersPage() {
+  const user = await getCurrentUser();
+
+  if (!user) {
+    redirect("/login");
+  }
+
+  const canCreateUsers = user.role === "SUPER_ADMIN" || user.role === "ADMIN";
+
+  return (
+    <div className="space-y-6">
+      <section>
+        <p className="text-sm font-medium text-emerald-800">User provisioning</p>
+        <h1 className="mt-2 text-2xl font-semibold text-slate-950">
+          Accounts and access
+        </h1>
+        <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600">
+          This first slice implements admin-controlled account creation. Public
+          signup is intentionally absent.
+        </p>
+      </section>
+
+      {canCreateUsers ? (
+        <CreateUserForm />
+      ) : (
+        <div className="rounded-lg border border-slate-200 bg-white p-5 text-sm text-slate-600">
+          Your role can view scoped work data, but it cannot create user accounts.
+        </div>
+      )}
+    </div>
+  );
+}
+
