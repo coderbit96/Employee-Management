@@ -9,13 +9,20 @@ Next.js App Router rebuild based on the PRD in the parent workspace. The current
 - No public signup page or unauthenticated account creation route.
 - One-time Super Admin seed command that refuses to overwrite an existing Super Admin.
 - Central role and permission checks for account provisioning.
-- Admin-controlled user creation with admin-set passwords for immediate login.
+- Super Admin-controlled user creation with set passwords for immediate login.
 - Password change, forgot-password, and reset-password API/UI.
 - User, employee profile, and audit log Mongoose models.
-- Audit events for seed, login success/failure, account activation, password changes, reset requests, account creation, and employee profile updates.
+- Audit events for seed, login success/failure, password changes, reset requests, account creation, and employee profile updates.
 - Protected dashboard, user provisioning, account list, and employee directory UI.
 - Employee directory API with manager self-assignment and reporting-cycle prevention.
-- Permission unit tests for Admin creation and employee directory boundaries.
+- Super Admin/HR employee delete permanently removes the employee profile, linked login, attendance, leave, and salary records from MongoDB.
+- Daily attendance check-in/check-out with duration calculation.
+- Employee leave mail and HR/Super Admin mailbox.
+- Formal leave requests with overlap prevention and HR/Super Admin approval/rejection.
+- Salary payment records with draft, paid, and reversed statuses.
+- Payroll page for processors and employee payment history.
+- Super Admin audit log viewer.
+- Permission unit tests for Super Admin provisioning and employee directory boundaries.
 
 ## Setup
 
@@ -54,8 +61,8 @@ npm run build
 
 ## Next PRD Phases
 
-- Add activation and password reset screens.
+- Add richer password reset and session management screens.
 - Add richer employee profile editing UI, suspension, and offboarding.
-- Add attendance check-in/out, photo/location metadata, correction workflow, and scoped map view.
-- Add leave policy, overlap checks, approval routing, and ledger summaries.
-- Add salary payment records, notification retries, reports, and audit viewer.
+- Add attendance photo/location metadata, correction workflow, history, and scoped map view.
+- Add leave ledger balances, paid/unpaid split, cancellation workflow, and yearly summaries.
+- Add notification retries, reports, advanced settings, and deployment hardening.

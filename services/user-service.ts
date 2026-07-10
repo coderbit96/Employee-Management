@@ -41,10 +41,10 @@ export async function createProvisionedUser(
     );
   }
 
-  if (input.role === "SUPER_ADMIN" && actor.role !== "SUPER_ADMIN") {
+  if (input.role === "SUPER_ADMIN") {
     throw new UserServiceError(
       "SUPER_ADMIN_RESTRICTED",
-      "Only a Super Admin can create privileged owner accounts.",
+      "The Super Admin account is created only by the seed command.",
       403,
     );
   }
@@ -150,10 +150,10 @@ export async function listUsers(
 ) {
   await connectToDatabase();
 
-  if (actor.role !== "SUPER_ADMIN" && actor.role !== "ADMIN") {
+  if (actor.role !== "SUPER_ADMIN") {
     throw new UserServiceError(
       "INSUFFICIENT_PERMISSION",
-      "Only admins can list user accounts.",
+      "Only the Super Admin can list user accounts.",
       403,
     );
   }

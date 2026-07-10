@@ -60,15 +60,6 @@ const UserSchema = new Schema(
       default: 1,
       select: false,
     },
-    activationTokenHash: {
-      type: String,
-      select: false,
-      index: true,
-    },
-    activationExpiresAt: {
-      type: Date,
-      select: false,
-    },
     passwordResetTokenHash: {
       type: String,
       select: false,

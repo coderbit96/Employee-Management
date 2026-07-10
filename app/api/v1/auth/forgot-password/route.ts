@@ -5,6 +5,7 @@ import {
   getRequestContext,
   validationError,
 } from "@/lib/api/response";
+import { checkRateLimit } from "@/lib/api/rate-limit";
 import { forgotPasswordSchema } from "@/lib/validation/auth";
 import { requestPasswordReset } from "@/services/auth-service";
 
@@ -12,6 +13,18 @@ export const runtime = "nodejs";
 
 export async function POST(request: NextRequest) {
   const context = getRequestContext(request);
+  const rateLimit = checkRateLimit(request, "forgot-password", {
+    windowMs: Number(process.env.RATE_LIMIT_WINDOW_MS ?? 60_000),
+    max: 5,
+  });
+
+  if (rateLimit.limited) {
+    return apiError("RATE_LIMITED", "Too many reset requests. Please try again later.", {
+      status: 429,
+      requestId: context.requestId,
+    });
+  }
+
   const body = await request.json().catch(() => null);
   const parsed = forgotPasswordSchema.safeParse(body);
 
@@ -37,4 +50,3 @@ export async function POST(request: NextRequest) {
     });
   }
 }
-

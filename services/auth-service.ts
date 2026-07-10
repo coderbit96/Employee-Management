@@ -8,8 +8,8 @@ import {
 } from "@/lib/auth/password";
 import { signSessionToken, toSafeUser } from "@/lib/auth/session";
 import { writeAuditLog } from "@/lib/audit/log";
+import { ROLES } from "@/types/domain";
 import type {
-  ActivateAccountInput,
   ChangePasswordInput,
   ForgotPasswordInput,
   LoginInput,
@@ -44,6 +44,14 @@ export async function loginUser(
     throw new AuthError("INVALID_CREDENTIALS", "Invalid credentials.");
   }
 
+  if (!ROLES.includes(user.role)) {
+    throw new AuthError(
+      "UNSUPPORTED_ROLE",
+      "This account role is no longer supported. Please contact the Super Admin.",
+      403,
+    );
+  }
+
   if (user.status === "SUSPENDED" || user.status === "OFFBOARDED") {
     throw new AuthError("ACCOUNT_DISABLED", "This account cannot sign in.", 403);
   }
@@ -51,7 +59,7 @@ export async function loginUser(
   if (user.status === "INVITED") {
     throw new AuthError(
       "ACCOUNT_INVITED",
-      "Please activate the account before signing in.",
+      "This account is not active. Please contact the Super Admin.",
       403,
     );
   }
@@ -118,63 +126,6 @@ export async function loginUser(
   };
 }
 
-export async function activateAccount(
-  input: ActivateAccountInput,
-  context: { requestId?: string; ipHash?: string; userAgent?: string },
-) {
-  await connectToDatabase();
-
-  const tokenHash = hashToken(input.token);
-  const user = await User.findOne({ activationTokenHash: tokenHash }).select(
-    "+activationTokenHash +activationExpiresAt +sessionVersion",
-  );
-
-  if (!user || !user.activationExpiresAt || user.activationExpiresAt < new Date()) {
-    throw new AuthError(
-      "ACTIVATION_INVALID",
-      "This activation link is invalid or expired.",
-      400,
-    );
-  }
-
-  if (user.status !== "INVITED") {
-    throw new AuthError(
-      "ACTIVATION_NOT_ALLOWED",
-      "This account does not need activation.",
-      409,
-    );
-  }
-
-  user.passwordHash = await hashPassword(input.password);
-  user.status = "ACTIVE";
-  user.forcePasswordChange = false;
-  user.activationTokenHash = undefined;
-  user.activationExpiresAt = undefined;
-  user.sessionVersion += 1;
-  user.lastLoginAt = new Date();
-  await user.save();
-
-  const safeUser = toSafeUser(user);
-  const token = await signSessionToken({
-    sub: user._id.toString(),
-    role: user.role,
-    permissions: user.permissions ?? [],
-    sessionVersion: user.sessionVersion,
-  });
-
-  await writeAuditLog({
-    actor: safeUser,
-    action: "ACCOUNT_ACTIVATED",
-    entityType: "User",
-    entityId: user._id,
-    requestId: context.requestId,
-    ipHash: context.ipHash,
-    userAgent: context.userAgent,
-  });
-
-  return { user: safeUser, token };
-}
-
 export async function changePassword(
   input: ChangePasswordInput,
   actorId: string,
@@ -227,6 +178,36 @@ export async function changePassword(
   });
 
   return { user: safeUser, token };
+}
+
+export async function logoutAllSessions(
+  actorId: string,
+  context: { requestId?: string; ipHash?: string; userAgent?: string },
+) {
+  await connectToDatabase();
+
+  const user = await User.findById(actorId).select("+sessionVersion");
+
+  if (!user || user.status !== "ACTIVE") {
+    throw new AuthError("UNAUTHENTICATED", "Please sign in.", 401);
+  }
+
+  user.sessionVersion += 1;
+  await user.save();
+
+  const safeUser = toSafeUser(user);
+
+  await writeAuditLog({
+    actor: safeUser,
+    action: "AUTH_LOGOUT_ALL",
+    entityType: "User",
+    entityId: user._id,
+    requestId: context.requestId,
+    ipHash: context.ipHash,
+    userAgent: context.userAgent,
+  });
+
+  return { loggedOutAll: true };
 }
 
 export async function requestPasswordReset(

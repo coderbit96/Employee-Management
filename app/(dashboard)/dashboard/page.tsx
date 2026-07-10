@@ -1,16 +1,25 @@
 import { redirect } from "next/navigation";
+import { AttendanceHistory } from "@/components/attendance/attendance-history";
 import { ChangePasswordForm } from "@/components/auth/change-password-form";
 import { AttendanceCard } from "@/components/attendance/attendance-card";
 import { HrLeaveInbox } from "@/components/leave/hr-leave-inbox";
+import { LeaveApprovalInbox } from "@/components/leave/leave-approval-inbox";
 import { LeaveMailForm } from "@/components/leave/leave-mail-form";
+import { LeaveRequestPanel } from "@/components/leave/leave-request-panel";
+import { NotificationList } from "@/components/notifications/notification-list";
 import { getCurrentUser } from "@/lib/auth/session";
-import { getTodayAttendance } from "@/services/attendance-service";
+import {
+  getTodayAttendance,
+  listAttendanceRecords,
+} from "@/services/attendance-service";
 import { listLeaveInbox } from "@/services/leave-message-service";
+import { listLeaveRequests } from "@/services/leave-request-service";
+import { listNotifications } from "@/services/notification-service";
 
 const cards = [
   {
     title: "Account provisioning",
-    body: "Admins create HR, Manager, and Employee accounts with immediate login credentials.",
+    body: "Super Admin creates HR, Manager, and Employee accounts with immediate login credentials.",
   },
   {
     title: "Daily attendance",
@@ -18,7 +27,7 @@ const cards = [
   },
   {
     title: "Leave mailbox",
-    body: "Employee leave mail appears in HR and Admin dashboards.",
+    body: "Employee leave mail appears in HR and Super Admin dashboards.",
   },
 ];
 
@@ -33,9 +42,26 @@ export default async function DashboardPage() {
   const attendance = showEmployeeTools
     ? await getTodayAttendance(user).catch(() => null)
     : null;
-  const leaveInbox = ["SUPER_ADMIN", "ADMIN", "HR"].includes(user.role)
+  const leaveInbox = ["SUPER_ADMIN", "HR"].includes(user.role)
     ? await listLeaveInbox(user).catch(() => ({ messages: [] }))
     : null;
+  const myLeaveRequests = showEmployeeTools
+    ? await listLeaveRequests(user, { scope: "mine" }).catch(() => ({
+        leaveRequests: [],
+      }))
+    : null;
+  const pendingLeaveRequests = ["SUPER_ADMIN", "HR"].includes(user.role)
+    ? await listLeaveRequests(user, {
+        scope: "inbox",
+        status: "PENDING",
+      }).catch(() => ({ leaveRequests: [] }))
+    : null;
+  const attendanceRecords = await listAttendanceRecords(user).catch(() => ({
+    records: [],
+  }));
+  const notifications = await listNotifications(user).catch(() => ({
+    notifications: [],
+  }));
 
   return (
     <div className="space-y-6">
@@ -44,12 +70,6 @@ export default async function DashboardPage() {
         <h1 className="mt-2 text-2xl font-semibold text-slate-950">
           {user.role.replace("_", " ")} dashboard
         </h1>
-        {user.forcePasswordChange ? (
-          <p className="mt-3 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
-            This account is marked for first-login password change. The password
-            setup screen is the next identity feature to complete.
-          </p>
-        ) : null}
       </section>
 
       <section className="grid gap-4 md:grid-cols-3">
@@ -66,7 +86,19 @@ export default async function DashboardPage() {
 
       {attendance ? <AttendanceCard initialAttendance={attendance} /> : null}
 
+      <AttendanceHistory records={attendanceRecords.records} />
+
+      <NotificationList notifications={notifications.notifications} />
+
+      {myLeaveRequests ? (
+        <LeaveRequestPanel requests={myLeaveRequests.leaveRequests} />
+      ) : null}
+
       {showEmployeeTools ? <LeaveMailForm /> : null}
+
+      {pendingLeaveRequests ? (
+        <LeaveApprovalInbox requests={pendingLeaveRequests.leaveRequests} />
+      ) : null}
 
       {leaveInbox ? <HrLeaveInbox messages={leaveInbox.messages} /> : null}
 

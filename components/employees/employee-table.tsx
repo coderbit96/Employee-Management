@@ -58,7 +58,7 @@ export function EmployeeTable({
 
   async function removeEmployee(employee: EmployeeListItem) {
     const confirmed = window.confirm(
-      `Delete ${employee.name}? This will soft-delete the profile and revoke the linked login.`,
+      `Delete ${employee.name}? This will permanently delete the employee, login, attendance, leave, and salary records from MongoDB.`,
     );
 
     if (!confirmed) {
@@ -70,6 +70,40 @@ export function EmployeeTable({
 
     const response = await fetch(`/api/v1/employees/${employee.id}`, {
       method: "DELETE",
+    });
+    const payload = (await response.json()) as ApiResponse;
+    setLoadingId("");
+
+    if (!payload.success) {
+      setError(payload.error.message);
+      return;
+    }
+
+    router.refresh();
+  }
+
+  async function offboard(employee: EmployeeListItem) {
+    const exitReason = window.prompt(`Exit reason for ${employee.name}?`);
+
+    if (!exitReason) {
+      return;
+    }
+
+    const exitDate =
+      window.prompt("Exit date (YYYY-MM-DD)", new Date().toISOString().slice(0, 10)) ??
+      "";
+
+    if (!exitDate) {
+      return;
+    }
+
+    setError("");
+    setLoadingId(employee.id);
+
+    const response = await fetch(`/api/v1/employees/${employee.id}/offboard`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ exitDate, exitReason }),
     });
     const payload = (await response.json()) as ApiResponse;
     setLoadingId("");
@@ -125,6 +159,11 @@ export function EmployeeTable({
                 </td>
                 <td className="px-5 py-3 text-slate-700">
                   {employee.employmentStatus}
+                  {employee.exitDate ? (
+                    <p className="text-xs text-slate-500">
+                      Exit: {new Date(employee.exitDate).toLocaleDateString("en-IN")}
+                    </p>
+                  ) : null}
                 </td>
                 <td className="px-5 py-3 text-slate-700">
                   {employee.salary.currency}{" "}
@@ -147,6 +186,16 @@ export function EmployeeTable({
                     >
                       {loadingId === employee.id ? "Deleting..." : "Delete"}
                     </button>
+                    {employee.employmentStatus !== "OFFBOARDED" ? (
+                      <button
+                        type="button"
+                        onClick={() => offboard(employee)}
+                        disabled={loadingId === employee.id}
+                        className="ml-2 rounded-md border border-amber-200 px-3 py-1.5 text-sm font-medium text-amber-700 transition hover:bg-amber-50 disabled:opacity-60"
+                      >
+                        Offboard
+                      </button>
+                    ) : null}
                   </td>
                 ) : null}
               </tr>
@@ -265,4 +314,3 @@ function Field({
     </label>
   );
 }
-

@@ -2,6 +2,7 @@
 
 import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
+import { PasswordInput } from "@/components/auth/password-input";
 
 type CreateUserResult =
   | {
@@ -21,7 +22,7 @@ type CreateUserResult =
       };
     };
 
-const roles = ["ADMIN", "HR", "MANAGER", "EMPLOYEE"];
+const roles = ["HR", "MANAGER", "EMPLOYEE"];
 
 export function CreateUserForm() {
   const router = useRouter();
@@ -87,7 +88,12 @@ export function CreateUserForm() {
 
       <Field name="email" label="Email or login ID" />
       <Field name="loginId" label="Login ID" />
-      <Field name="password" label="Password" type="password" />
+      <PasswordInput
+        name="password"
+        label="Password"
+        autoComplete="new-password"
+        inputClassName="w-full rounded-md border border-slate-300 bg-white px-3 py-2 pr-16"
+      />
 
       <label className="block text-sm font-medium text-slate-800">
         Role

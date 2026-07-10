@@ -2,6 +2,7 @@
 
 import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
+import { PasswordInput } from "@/components/auth/password-input";
 
 type ApiResponse =
   | { success: true; data: { user: { email: string } } }
@@ -75,16 +76,11 @@ export function ChangePasswordForm() {
 
 function PasswordField({ name, label }: { name: string; label: string }) {
   return (
-    <label className="block text-sm font-medium text-slate-800">
-      {label}
-      <input
-        name={name}
-        type="password"
-        autoComplete="new-password"
-        className="mt-2 w-full rounded-md border border-slate-300 px-3 py-2"
-        required
-      />
-    </label>
+    <PasswordInput
+      name={name}
+      label={label}
+      autoComplete={name === "currentPassword" ? "current-password" : "new-password"}
+      inputClassName="w-full rounded-md border border-slate-300 px-3 py-2 pr-16"
+    />
   );
 }
-

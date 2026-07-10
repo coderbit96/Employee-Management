@@ -75,10 +75,10 @@ export async function sendLeaveMessage(
 export async function listLeaveInbox(actor: SafeUser) {
   await connectToDatabase();
 
-  if (!["SUPER_ADMIN", "ADMIN", "HR"].includes(actor.role)) {
+  if (!["SUPER_ADMIN", "HR"].includes(actor.role)) {
     throw new LeaveMessageServiceError(
       "INSUFFICIENT_PERMISSION",
-      "Only HR or admins can view leave mail.",
+      "Only HR or Super Admin can view leave mail.",
       403,
     );
   }
@@ -116,4 +116,3 @@ function toLeaveMessage(message: {
     createdAt: message.createdAt?.toISOString(),
   };
 }
-

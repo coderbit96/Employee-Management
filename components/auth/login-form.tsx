@@ -4,6 +4,7 @@ import { FormEvent, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
+import { PasswordInput } from "@/components/auth/password-input";
 
 type ApiResponse =
   | { success: true; data: { forcePasswordChange: boolean } }
@@ -55,7 +56,7 @@ export function LoginForm() {
           Employee Management System
         </h1>
         <p className="mt-2 text-sm leading-6 text-slate-600">
-          Sign in with the account created by your administrator.
+          Sign in with the account created by your Super Admin.
         </p>
       </div>
 
@@ -71,17 +72,13 @@ export function LoginForm() {
         required
       />
 
-      <label className="mt-4 block text-sm font-medium text-slate-800" htmlFor="password">
-        Password
-      </label>
-      <input
+      <PasswordInput
         id="password"
-        type="password"
+        label="Password"
         value={password}
         onChange={(event) => setPassword(event.target.value)}
         autoComplete="current-password"
-        className="mt-2 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-slate-950 shadow-sm"
-        required
+        className="mt-4 block text-sm font-medium text-slate-800"
       />
 
       {error ? (

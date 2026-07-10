@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 import { jwtVerify, SignJWT } from "jose";
 import { User } from "@/models/User";
 import { connectToDatabase } from "@/lib/db/mongoose";
-import type { Permission, Role, SafeUser } from "@/types/domain";
+import { ROLES, type Permission, type Role, type SafeUser } from "@/types/domain";
 
 export const SESSION_COOKIE_NAME = "ems_session";
 
@@ -105,6 +105,7 @@ export async function getCurrentUser() {
 
     if (
       !user ||
+      !ROLES.includes(user.role) ||
       user.status !== "ACTIVE" ||
       user.sessionVersion !== session.sessionVersion
     ) {

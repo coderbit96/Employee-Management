@@ -23,3 +23,9 @@ export const updateEmployeeSchema = z.object({
 
 export type UpdateEmployeeInput = z.infer<typeof updateEmployeeSchema>;
 
+export const offboardEmployeeSchema = z.object({
+  exitDate: z.coerce.date(),
+  exitReason: z.string().trim().min(3).max(500),
+});
+
+export type OffboardEmployeeInput = z.infer<typeof offboardEmployeeSchema>;

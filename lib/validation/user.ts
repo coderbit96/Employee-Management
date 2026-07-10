@@ -13,7 +13,7 @@ export const createUserSchema = z.object({
   ),
   role: z.enum(ROLES),
   permissions: z.array(z.enum(PERMISSIONS)).default([]),
-  password: z.string().min(6, "Password must be at least 6 characters."),
+  password: z.string(),
   employeeNumber: z.string().trim().min(2).max(30),
   firstName: z.string().trim().min(1).max(80),
   lastName: z.string().trim().min(1).max(80),

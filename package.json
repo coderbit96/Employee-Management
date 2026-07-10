@@ -11,19 +11,14 @@
     "seed:super-admin": "tsx -r tsconfig-paths/register scripts/seed-super-admin.ts"
   },
   "dependencies": {
-    "@hookform/resolvers": "^5.4.0",
-    "@tanstack/react-query": "^5.101.2",
     "bcryptjs": "^3.0.3",
     "dotenv": "^17.4.2",
     "framer-motion": "^12.42.2",
     "jose": "^6.2.3",
-    "lucide-react": "^1.23.0",
     "mongoose": "^9.7.4",
     "next": "16.2.10",
-    "nodemailer": "^9.0.3",
     "react": "19.2.4",
     "react-dom": "19.2.4",
-    "react-hook-form": "^7.81.0",
     "zod": "^4.4.3"
   },
   "devDependencies": {

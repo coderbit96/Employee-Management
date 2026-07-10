@@ -23,11 +23,28 @@ const AttendanceSchema = new Schema(
       type: Date,
       required: true,
     },
+    checkInLocation: {
+      latitude: Number,
+      longitude: Number,
+      accuracyMeters: Number,
+    },
+    checkInPhotoDataUrl: String,
     checkOutAt: Date,
+    checkOutLocation: {
+      latitude: Number,
+      longitude: Number,
+      accuracyMeters: Number,
+    },
     durationMinutes: {
       type: Number,
       min: 0,
       default: 0,
+    },
+    exception: {
+      type: String,
+      enum: ["NONE", "SHORT_DAY", "MISSING_CHECKOUT"],
+      default: "NONE",
+      index: true,
     },
     status: {
       type: String,
@@ -48,4 +65,3 @@ export type AttendanceDocument = InferSchemaType<typeof AttendanceSchema> & {
 export const Attendance =
   (mongoose.models.Attendance as Model<AttendanceDocument>) ||
   mongoose.model<AttendanceDocument>("Attendance", AttendanceSchema);
-

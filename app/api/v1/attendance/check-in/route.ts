@@ -1,6 +1,12 @@
 import { NextRequest } from "next/server";
-import { apiError, apiOk, getRequestContext } from "@/lib/api/response";
+import {
+  apiError,
+  apiOk,
+  getRequestContext,
+  validationError,
+} from "@/lib/api/response";
 import { getCurrentUser } from "@/lib/auth/session";
+import { attendancePunchSchema } from "@/lib/validation/attendance";
 import { AttendanceServiceError, checkIn } from "@/services/attendance-service";
 
 export const runtime = "nodejs";
@@ -16,8 +22,15 @@ export async function POST(request: NextRequest) {
     });
   }
 
+  const body = await request.json().catch(() => ({}));
+  const parsed = attendancePunchSchema.safeParse(body);
+
+  if (!parsed.success) {
+    return validationError(parsed.error, context.requestId);
+  }
+
   try {
-    const attendance = await checkIn(currentUser, context);
+    const attendance = await checkIn(currentUser, parsed.data, context);
     return apiOk({ attendance }, { requestId: context.requestId });
   } catch (error) {
     if (error instanceof AttendanceServiceError) {
@@ -33,4 +46,3 @@ export async function POST(request: NextRequest) {
     });
   }
 }
-

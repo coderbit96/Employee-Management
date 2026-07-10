@@ -19,10 +19,6 @@ async function main() {
     );
   }
 
-  if (password.length < 6) {
-    throw new Error("Seed password must be at least 6 characters.");
-  }
-
   await connectToDatabase();
 
   const existingSuperAdmin = await User.findOne({
@@ -48,7 +44,6 @@ async function main() {
     passwordHash: await hashPassword(password),
     role: "SUPER_ADMIN",
     permissions: [
-      "CREATE_ADMIN",
       "MANAGE_USERS",
       "MANAGE_EMPLOYEES",
       "VIEW_AUDIT_LOGS",
@@ -58,7 +53,7 @@ async function main() {
       "ARCHIVE_ATTENDANCE",
     ],
     status: "ACTIVE",
-    forcePasswordChange: true,
+    forcePasswordChange: false,
   });
 
   await AuditLog.create({

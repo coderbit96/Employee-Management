@@ -1,6 +1,5 @@
 export const ROLES = [
   "SUPER_ADMIN",
-  "ADMIN",
   "HR",
   "MANAGER",
   "EMPLOYEE",
@@ -42,4 +41,3 @@ export type SafeUser = {
   forcePasswordChange: boolean;
   lastLoginAt?: string;
 };
-

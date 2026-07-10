@@ -48,6 +48,7 @@ const EmployeeProfileSchema = new Schema(
       required: true,
     },
     exitDate: Date,
+    exitReason: String,
     employmentStatus: {
       type: String,
       enum: ["ACTIVE", "SUSPENDED", "OFFBOARDED"],

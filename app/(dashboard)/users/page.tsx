@@ -11,7 +11,7 @@ export default async function UsersPage() {
     redirect("/login");
   }
 
-  const canCreateUsers = user.role === "SUPER_ADMIN" || user.role === "ADMIN";
+  const canCreateUsers = user.role === "SUPER_ADMIN";
   const userList = canCreateUsers
     ? await listUsers(user, { page: 1, limit: 20 })
     : null;
@@ -24,8 +24,8 @@ export default async function UsersPage() {
           Accounts and access
         </h1>
         <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600">
-          This first slice implements admin-controlled account creation. Public
-          signup is intentionally absent.
+          Super Admin controls account creation. Public signup is intentionally
+          absent.
         </p>
       </section>
 

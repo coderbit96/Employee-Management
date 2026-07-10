@@ -1,5 +1,11 @@
 import { Types } from "mongoose";
+import { Attendance } from "@/models/Attendance";
 import { EmployeeProfile } from "@/models/EmployeeProfile";
+import { LeaveMessage } from "@/models/LeaveMessage";
+import { LeaveLedger } from "@/models/LeaveLedger";
+import { LeaveRequest } from "@/models/LeaveRequest";
+import { Notification } from "@/models/Notification";
+import { SalaryPayment } from "@/models/SalaryPayment";
 import { User } from "@/models/User";
 import { writeAuditLog } from "@/lib/audit/log";
 import { connectToDatabase } from "@/lib/db/mongoose";
@@ -7,8 +13,10 @@ import {
   canManageEmployeeProfiles,
   canViewEmployeeDirectory,
 } from "@/lib/permissions/roles";
+import { createNotifications } from "@/services/notification-service";
 import type {
   ListEmployeesQuery,
+  OffboardEmployeeInput,
   UpdateEmployeeInput,
 } from "@/lib/validation/employee";
 import type { SafeUser } from "@/types/domain";
@@ -42,6 +50,8 @@ export type EmployeeListItem = {
   managerId?: string;
   joiningDate: string;
   employmentStatus: string;
+  exitDate?: string;
+  exitReason?: string;
   salary: {
     baseAmount: number;
     currency: string;
@@ -115,6 +125,8 @@ export async function listEmployees(actor: SafeUser, input: ListEmployeesQuery) 
       managerId: profile.managerId?.toString(),
       joiningDate: profile.joiningDate.toISOString(),
       employmentStatus: profile.employmentStatus,
+      exitDate: profile.exitDate?.toISOString(),
+      exitReason: profile.exitReason ?? undefined,
       salary: {
         baseAmount: profile.salary?.baseAmount ?? 0,
         currency: profile.salary?.currency ?? "INR",
@@ -125,6 +137,109 @@ export async function listEmployees(actor: SafeUser, input: ListEmployeesQuery) 
       limit: input.limit,
       total,
       pages: Math.ceil(total / input.limit),
+    },
+  };
+}
+
+export async function offboardEmployee(
+  employeeId: string,
+  input: OffboardEmployeeInput,
+  actor: SafeUser,
+  context: RequestContext,
+) {
+  await connectToDatabase();
+
+  if (!canManageEmployeeProfiles(actor)) {
+    throw new EmployeeServiceError(
+      "INSUFFICIENT_PERMISSION",
+      "You cannot offboard employee profiles.",
+      403,
+    );
+  }
+
+  if (!Types.ObjectId.isValid(employeeId)) {
+    throw new EmployeeServiceError("NOT_FOUND", "Employee was not found.", 404);
+  }
+
+  const profile = await EmployeeProfile.findOne({
+    _id: employeeId,
+    deletedAt: { $exists: false },
+  });
+
+  if (!profile) {
+    throw new EmployeeServiceError("NOT_FOUND", "Employee was not found.", 404);
+  }
+
+  const reassignment = profile.managerId
+    ? { managerId: profile.managerId }
+    : { $unset: { managerId: "" } };
+  const [reportingUpdate, pendingLeaveUpdate] = await Promise.all([
+    EmployeeProfile.updateMany({ managerId: profile._id }, reassignment),
+    LeaveRequest.updateMany(
+      { employeeId: profile._id, status: "PENDING" },
+      {
+        status: "WITHDRAWN",
+        $push: {
+          approvalHistory: {
+            action: "WITHDRAWN",
+            actorId: new Types.ObjectId(actor.id),
+            actorRole: actor.role,
+            note: "Employee offboarded.",
+            decidedAt: new Date(),
+          },
+        },
+      },
+    ),
+    User.updateOne(
+      { _id: profile.userId },
+      {
+        status: "OFFBOARDED",
+        $inc: { sessionVersion: 1 },
+      },
+    ),
+  ]);
+
+  profile.employmentStatus = "OFFBOARDED";
+  profile.exitDate = input.exitDate;
+  profile.exitReason = input.exitReason;
+  await profile.save();
+
+  await createNotifications([
+    {
+      recipientUserId: profile.userId,
+      title: "Account offboarded",
+      message: "Your employee account has been offboarded and login is disabled.",
+      entityType: "EmployeeProfile",
+      entityId: profile._id,
+    },
+  ]);
+
+  await writeAuditLog({
+    actor,
+    action: "EMPLOYEE_OFFBOARDED",
+    entityType: "EmployeeProfile",
+    entityId: profile._id,
+    requestId: context.requestId,
+    ipHash: context.ipHash,
+    userAgent: context.userAgent,
+    summary: {
+      employeeNumber: profile.employeeNumber,
+      name: `${profile.firstName} ${profile.lastName}`,
+      exitDate: input.exitDate.toISOString(),
+      exitReason: input.exitReason,
+      reassignedReports: reportingUpdate.modifiedCount,
+      withdrawnLeaveRequests: pendingLeaveUpdate.modifiedCount,
+    },
+  });
+
+  return {
+    employee: {
+      id: profile._id.toString(),
+      employeeNumber: profile.employeeNumber,
+      name: `${profile.firstName} ${profile.lastName}`,
+      employmentStatus: profile.employmentStatus,
+      exitDate: profile.exitDate.toISOString(),
+      exitReason: profile.exitReason,
     },
   };
 }
@@ -234,20 +349,6 @@ export async function deleteEmployee(
     throw new EmployeeServiceError("NOT_FOUND", "Employee was not found.", 404);
   }
 
-  profile.deletedAt = new Date();
-  profile.deletedBy = new Types.ObjectId(actor.id);
-  profile.employmentStatus = "OFFBOARDED";
-  profile.exitDate = new Date();
-  await profile.save();
-
-  await User.updateOne(
-    { _id: profile.userId },
-    {
-      $set: { status: "DELETED" },
-      $inc: { sessionVersion: 1 },
-    },
-  );
-
   await writeAuditLog({
     actor,
     action: "EMPLOYEE_PROFILE_DELETED",
@@ -259,8 +360,26 @@ export async function deleteEmployee(
     summary: {
       employeeNumber: profile.employeeNumber,
       name: `${profile.firstName} ${profile.lastName}`,
+      hardDelete: true,
     },
   });
+
+  await Promise.all([
+    Attendance.deleteMany({ employeeId: profile._id }),
+    LeaveLedger.deleteMany({ employeeId: profile._id }),
+    LeaveMessage.deleteMany({ employeeId: profile._id }),
+    LeaveRequest.deleteMany({ employeeId: profile._id }),
+    Notification.deleteMany({
+      $or: [{ recipientUserId: profile.userId }, { entityId: profile._id }],
+    }),
+    SalaryPayment.deleteMany({ employeeId: profile._id }),
+    EmployeeProfile.updateMany(
+      { managerId: profile._id },
+      { $unset: { managerId: "" } },
+    ),
+    User.deleteOne({ _id: profile.userId }),
+    EmployeeProfile.deleteOne({ _id: profile._id }),
+  ]);
 
   return {
     deleted: true,

@@ -43,6 +43,18 @@ export default async function DashboardLayout({
             >
               Employees
             </Link>
+            <Link
+              href="/payroll"
+              className="rounded-md px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-100"
+            >
+              Payroll
+            </Link>
+            <Link
+              href="/audit"
+              className="rounded-md px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-100"
+            >
+              Audit
+            </Link>
             <LogoutButton />
           </nav>
         </div>
