@@ -1,6 +1,7 @@
 "use client";
 
 import { FormEvent, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 
@@ -19,6 +20,8 @@ export function LoginForm() {
     event.preventDefault();
     setLoading(true);
     setError("");
+
+    await fetch("/api/v1/auth/logout", { method: "POST" });
 
     const response = await fetch("/api/v1/auth/login", {
       method: "POST",
@@ -94,7 +97,12 @@ export function LoginForm() {
       >
         {loading ? "Signing in..." : "Sign in"}
       </button>
+      <Link
+        href="/forgot-password"
+        className="mt-4 block text-center text-sm font-medium text-emerald-800 hover:text-emerald-900"
+      >
+        Forgot password?
+      </Link>
     </motion.form>
   );
 }
-

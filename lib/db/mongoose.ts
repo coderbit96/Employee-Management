@@ -28,6 +28,10 @@ export async function connectToDatabase() {
     throw new Error("MONGODB_URI is required.");
   }
 
+  if (uri.includes("<db_password>") || uri.includes("<replace-db-password>")) {
+    throw new Error("Replace the MongoDB password placeholder in .env.local.");
+  }
+
   cache.promise ??= mongoose.connect(uri, {
     bufferCommands: false,
   });
@@ -35,4 +39,3 @@ export async function connectToDatabase() {
   cache.conn = await cache.promise;
   return cache.conn;
 }
-

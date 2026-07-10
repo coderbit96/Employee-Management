@@ -1,18 +1,24 @@
 import { redirect } from "next/navigation";
+import { ChangePasswordForm } from "@/components/auth/change-password-form";
+import { AttendanceCard } from "@/components/attendance/attendance-card";
+import { HrLeaveInbox } from "@/components/leave/hr-leave-inbox";
+import { LeaveMailForm } from "@/components/leave/leave-mail-form";
 import { getCurrentUser } from "@/lib/auth/session";
+import { getTodayAttendance } from "@/services/attendance-service";
+import { listLeaveInbox } from "@/services/leave-message-service";
 
 const cards = [
   {
-    title: "Controlled provisioning",
-    body: "No public signup route is exposed. Admin-created accounts start invited and force a first password change.",
+    title: "Account provisioning",
+    body: "Admins create HR, Manager, and Employee accounts with immediate login credentials.",
   },
   {
-    title: "Role boundaries",
-    body: "Super Admin, Admin, HR, Manager, and Employee checks are centralized for backend authorization.",
+    title: "Daily attendance",
+    body: "Employees can check in and check out once per work date.",
   },
   {
-    title: "Audit trail",
-    body: "Login attempts, account creation, and seed actions write append-only operational audit records.",
+    title: "Leave mailbox",
+    body: "Employee leave mail appears in HR and Admin dashboards.",
   },
 ];
 
@@ -22,6 +28,14 @@ export default async function DashboardPage() {
   if (!user) {
     redirect("/login");
   }
+
+  const showEmployeeTools = ["EMPLOYEE", "HR", "MANAGER"].includes(user.role);
+  const attendance = showEmployeeTools
+    ? await getTodayAttendance(user).catch(() => null)
+    : null;
+  const leaveInbox = ["SUPER_ADMIN", "ADMIN", "HR"].includes(user.role)
+    ? await listLeaveInbox(user).catch(() => ({ messages: [] }))
+    : null;
 
   return (
     <div className="space-y-6">
@@ -49,7 +63,14 @@ export default async function DashboardPage() {
           </article>
         ))}
       </section>
+
+      {attendance ? <AttendanceCard initialAttendance={attendance} /> : null}
+
+      {showEmployeeTools ? <LeaveMailForm /> : null}
+
+      {leaveInbox ? <HrLeaveInbox messages={leaveInbox.messages} /> : null}
+
+      <ChangePasswordForm />
     </div>
   );
 }
-

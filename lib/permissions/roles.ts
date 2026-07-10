@@ -24,3 +24,10 @@ export function canManageUsers(actor: SafeUser) {
   return actor.role === "SUPER_ADMIN" || actor.role === "ADMIN";
 }
 
+export function canManageEmployeeProfiles(actor: SafeUser) {
+  return ["SUPER_ADMIN", "ADMIN", "HR"].includes(actor.role);
+}
+
+export function canViewEmployeeDirectory(actor: SafeUser) {
+  return ["SUPER_ADMIN", "ADMIN", "HR", "MANAGER"].includes(actor.role);
+}

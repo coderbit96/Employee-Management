@@ -1,6 +1,8 @@
 import { redirect } from "next/navigation";
 import { CreateUserForm } from "@/components/users/create-user-form";
+import { UserTable } from "@/components/users/user-table";
 import { getCurrentUser } from "@/lib/auth/session";
+import { listUsers } from "@/services/user-service";
 
 export default async function UsersPage() {
   const user = await getCurrentUser();
@@ -10,6 +12,9 @@ export default async function UsersPage() {
   }
 
   const canCreateUsers = user.role === "SUPER_ADMIN" || user.role === "ADMIN";
+  const userList = canCreateUsers
+    ? await listUsers(user, { page: 1, limit: 20 })
+    : null;
 
   return (
     <div className="space-y-6">
@@ -25,7 +30,10 @@ export default async function UsersPage() {
       </section>
 
       {canCreateUsers ? (
-        <CreateUserForm />
+        <>
+          <CreateUserForm />
+          <UserTable users={userList?.users ?? []} />
+        </>
       ) : (
         <div className="rounded-lg border border-slate-200 bg-white p-5 text-sm text-slate-600">
           Your role can view scoped work data, but it cannot create user accounts.
@@ -34,4 +42,3 @@ export default async function UsersPage() {
     </div>
   );
 }
-

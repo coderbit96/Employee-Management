@@ -34,10 +34,20 @@ export async function POST(request: NextRequest) {
       });
     }
 
+    if (
+      process.env.NODE_ENV !== "production" &&
+      error instanceof Error &&
+      error.message.includes("MongoDB")
+    ) {
+      return apiError("CONFIGURATION_ERROR", error.message, {
+        status: 500,
+        requestId: context.requestId,
+      });
+    }
+
     return apiError("LOGIN_FAILED", "Unable to sign in right now.", {
       status: 500,
       requestId: context.requestId,
     });
   }
 }
-

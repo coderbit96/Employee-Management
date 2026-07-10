@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { canCreateRole } from "@/lib/permissions/roles";
+import {
+  canCreateRole,
+  canManageEmployeeProfiles,
+  canViewEmployeeDirectory,
+} from "@/lib/permissions/roles";
 import type { SafeUser } from "@/types/domain";
 
 function user(overrides: Partial<SafeUser>): SafeUser {
@@ -44,3 +48,23 @@ describe("role provisioning permissions", () => {
   });
 });
 
+describe("employee directory permissions", () => {
+  it("allows Super Admin, Admin, HR, and Manager to view the directory", () => {
+    expect(canViewEmployeeDirectory(user({ role: "SUPER_ADMIN" }))).toBe(true);
+    expect(canViewEmployeeDirectory(user({ role: "ADMIN" }))).toBe(true);
+    expect(canViewEmployeeDirectory(user({ role: "HR" }))).toBe(true);
+    expect(canViewEmployeeDirectory(user({ role: "MANAGER" }))).toBe(true);
+  });
+
+  it("blocks Employee from viewing the full directory", () => {
+    expect(canViewEmployeeDirectory(user({ role: "EMPLOYEE" }))).toBe(false);
+  });
+
+  it("limits employee profile management to Super Admin, Admin, and HR", () => {
+    expect(canManageEmployeeProfiles(user({ role: "SUPER_ADMIN" }))).toBe(true);
+    expect(canManageEmployeeProfiles(user({ role: "ADMIN" }))).toBe(true);
+    expect(canManageEmployeeProfiles(user({ role: "HR" }))).toBe(true);
+    expect(canManageEmployeeProfiles(user({ role: "MANAGER" }))).toBe(false);
+    expect(canManageEmployeeProfiles(user({ role: "EMPLOYEE" }))).toBe(false);
+  });
+});

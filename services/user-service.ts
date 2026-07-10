@@ -2,7 +2,9 @@ import { EmployeeProfile } from "@/models/EmployeeProfile";
 import { User, type UserDocument } from "@/models/User";
 import { writeAuditLog } from "@/lib/audit/log";
 import { connectToDatabase } from "@/lib/db/mongoose";
-import { generateTemporaryPassword, hashPassword } from "@/lib/auth/password";
+import {
+  hashPassword,
+} from "@/lib/auth/password";
 import { canCreateRole } from "@/lib/permissions/roles";
 import { toSafeUser } from "@/lib/auth/session";
 import type { CreateUserInput } from "@/lib/validation/user";
@@ -47,11 +49,13 @@ export async function createProvisionedUser(
     );
   }
 
+  const identityFilters = [
+    ...(input.email ? [{ email: input.email }] : []),
+    ...(input.loginId ? [{ loginId: input.loginId }, { email: input.loginId }] : []),
+  ];
+
   const existingUser = await User.findOne({
-    $or: [
-      { email: input.email },
-      ...(input.loginId ? [{ loginId: input.loginId }] : []),
-    ],
+    $or: identityFilters,
   }).lean();
 
   if (existingUser) {
@@ -75,19 +79,18 @@ export async function createProvisionedUser(
     );
   }
 
-  const temporaryPassword = generateTemporaryPassword();
-  const passwordHash = await hashPassword(temporaryPassword);
+  const passwordHash = await hashPassword(input.password);
   let createdUser: UserDocument | null = null;
 
   try {
     createdUser = await User.create({
-      email: input.email,
+      email: input.email ?? input.loginId,
       loginId: input.loginId,
       passwordHash,
       role: input.role,
       permissions: input.permissions,
-      status: "INVITED",
-      forcePasswordChange: true,
+      status: "ACTIVE",
+      forcePasswordChange: false,
       createdBy: actor.id,
     });
 
@@ -125,14 +128,13 @@ export async function createProvisionedUser(
     userAgent: context.userAgent,
     summary: {
       role: input.role,
-      email: input.email,
+      email: input.email ?? input.loginId,
       employeeNumber,
     },
   });
 
   return {
     user: safeUser,
-    temporaryPassword,
   };
 }
 

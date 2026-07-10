@@ -1,11 +1,16 @@
-import "dotenv/config";
+import { config } from "dotenv";
 import { User } from "@/models/User";
 import { AuditLog } from "@/models/AuditLog";
 import { connectToDatabase } from "@/lib/db/mongoose";
 import { hashPassword } from "@/lib/auth/password";
 
+config({ path: ".env.local" });
+config({ path: ".env" });
+
 async function main() {
   const email = process.env.SEED_SUPER_ADMIN_EMAIL?.trim().toLowerCase();
+  const loginId =
+    process.env.SEED_SUPER_ADMIN_LOGIN_ID?.trim().toLowerCase() ?? "superadmin";
   const password = process.env.SEED_SUPER_ADMIN_PASSWORD;
 
   if (!email || !password) {
@@ -14,8 +19,8 @@ async function main() {
     );
   }
 
-  if (password.length < 12) {
-    throw new Error("Seed password must be at least 12 characters.");
+  if (password.length < 6) {
+    throw new Error("Seed password must be at least 6 characters.");
   }
 
   await connectToDatabase();
@@ -30,14 +35,16 @@ async function main() {
     return;
   }
 
-  const existingUser = await User.findOne({ email }).lean();
+  const existingUser = await User.findOne({
+    $or: [{ email }, { loginId }],
+  }).lean();
   if (existingUser) {
-    throw new Error("Seed email is already used by another account.");
+    throw new Error("Seed email or login ID is already used by another account.");
   }
 
   const user = await User.create({
     email,
-    loginId: "superadmin",
+    loginId,
     passwordHash: await hashPassword(password),
     role: "SUPER_ADMIN",
     permissions: [
@@ -76,4 +83,3 @@ main()
     const mongoose = await import("mongoose");
     await mongoose.disconnect();
   });
-

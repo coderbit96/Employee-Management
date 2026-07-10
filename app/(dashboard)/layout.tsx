@@ -37,6 +37,12 @@ export default async function DashboardLayout({
             >
               Users
             </Link>
+            <Link
+              href="/employees"
+              className="rounded-md px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-100"
+            >
+              Employees
+            </Link>
             <LogoutButton />
           </nav>
         </div>
@@ -45,4 +51,3 @@ export default async function DashboardLayout({
     </div>
   );
 }
-

@@ -5,9 +5,9 @@ const UserSchema = new Schema(
   {
     email: {
       type: String,
-      required: true,
       trim: true,
       lowercase: true,
+      sparse: true,
       unique: true,
       index: true,
     },
@@ -60,6 +60,24 @@ const UserSchema = new Schema(
       default: 1,
       select: false,
     },
+    activationTokenHash: {
+      type: String,
+      select: false,
+      index: true,
+    },
+    activationExpiresAt: {
+      type: Date,
+      select: false,
+    },
+    passwordResetTokenHash: {
+      type: String,
+      select: false,
+      index: true,
+    },
+    passwordResetExpiresAt: {
+      type: Date,
+      select: false,
+    },
     createdBy: {
       type: Schema.Types.ObjectId,
       ref: "User",
@@ -77,4 +95,3 @@ export type UserDocument = InferSchemaType<typeof UserSchema> & {
 export const User =
   (mongoose.models.User as Model<UserDocument>) ||
   mongoose.model<UserDocument>("User", UserSchema);
-

@@ -1,40 +1,54 @@
 "use client";
 
 import { FormEvent, useState } from "react";
+import { useRouter } from "next/navigation";
 
 type CreateUserResult =
   | {
       success: true;
       data: {
         user: { email: string; role: string; status: string };
-        temporaryPassword: string;
       };
     }
-  | { success: false; error: { message: string } };
+  | {
+      success: false;
+      error: {
+        message: string;
+        fieldErrors?: {
+          fieldErrors?: Record<string, string[]>;
+          formErrors?: string[];
+        };
+      };
+    };
 
 const roles = ["ADMIN", "HR", "MANAGER", "EMPLOYEE"];
 
 export function CreateUserForm() {
+  const router = useRouter();
   const [result, setResult] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    const formElement = event.currentTarget;
     setLoading(true);
     setResult("");
     setError("");
 
-    const form = new FormData(event.currentTarget);
+    const form = new FormData(formElement);
+    const identity = String(form.get("email") ?? "").trim();
+    const loginIdValue = String(form.get("loginId") ?? "").trim();
+    const looksLikeEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(identity);
     const response = await fetch("/api/v1/users", {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({
-        email: form.get("email"),
-        loginId: form.get("loginId") || undefined,
+        email: looksLikeEmail ? identity : undefined,
+        loginId: loginIdValue || (!looksLikeEmail ? identity : undefined),
         role: form.get("role"),
-        permissions:
-          form.get("createAdmin") === "on" ? ["CREATE_ADMIN"] : [],
+        permissions: [],
+        password: form.get("password"),
         employeeNumber: form.get("employeeNumber"),
         firstName: form.get("firstName"),
         lastName: form.get("lastName"),
@@ -48,14 +62,15 @@ export function CreateUserForm() {
     setLoading(false);
 
     if (!payload.success) {
-      setError(payload.error.message);
+      setError(formatError(payload));
       return;
     }
 
     setResult(
-      `Created ${payload.data.user.email}. Temporary password: ${payload.data.temporaryPassword}`,
+      `Created ${payload.data.user.email}. They can now sign in from the login page.`,
     );
-    event.currentTarget.reset();
+    formElement.reset();
+    router.refresh();
   }
 
   return (
@@ -66,12 +81,13 @@ export function CreateUserForm() {
       <div className="md:col-span-2">
         <h2 className="text-lg font-semibold text-slate-950">Create account</h2>
         <p className="mt-1 text-sm text-slate-600">
-          Every account receives unique credentials and an audit entry.
+          Set a password now so the user can sign in from the normal login page.
         </p>
       </div>
 
-      <Field name="email" label="Email" type="email" />
+      <Field name="email" label="Email or login ID" />
       <Field name="loginId" label="Login ID" />
+      <Field name="password" label="Password" type="password" />
 
       <label className="block text-sm font-medium text-slate-800">
         Role
@@ -95,11 +111,6 @@ export function CreateUserForm() {
       <Field name="designation" label="Designation" />
       <Field name="joiningDate" label="Joining date" type="date" />
       <Field name="baseSalary" label="Base salary" type="number" />
-
-      <label className="flex items-center gap-2 text-sm text-slate-700 md:col-span-2">
-        <input type="checkbox" name="createAdmin" className="h-4 w-4" />
-        Grant CREATE_ADMIN permission when creating an Admin account
-      </label>
 
       {error ? (
         <p className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 md:col-span-2">
@@ -146,3 +157,13 @@ function Field({
   );
 }
 
+function formatError(payload: Extract<CreateUserResult, { success: false }>) {
+  const fieldErrors = payload.error.fieldErrors?.fieldErrors;
+  const messages = fieldErrors
+    ? Object.entries(fieldErrors).flatMap(([field, errors]) =>
+        errors.map((error) => `${field}: ${error}`),
+      )
+    : [];
+
+  return messages.length ? messages.join(" ") : payload.error.message;
+}

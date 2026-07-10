@@ -26,7 +26,7 @@ function getSecret() {
 export async function signSessionToken(payload: SessionPayload) {
   return new SignJWT({
     role: payload.role,
-    permissions: payload.permissions,
+    permissions: [...payload.permissions],
     sessionVersion: payload.sessionVersion,
   })
     .setProtectedHeader({ alg: "HS256" })
@@ -68,7 +68,7 @@ export function clearSessionCookie(response: NextResponse) {
 
 export function toSafeUser(user: {
   _id: { toString(): string };
-  email: string;
+  email?: string | null;
   loginId?: string | null;
   role: Role;
   permissions: Permission[];
@@ -78,10 +78,10 @@ export function toSafeUser(user: {
 }): SafeUser {
   return {
     id: user._id.toString(),
-    email: user.email,
+    email: user.email ?? user.loginId ?? "unknown",
     loginId: user.loginId ?? undefined,
     role: user.role,
-    permissions: user.permissions ?? [],
+    permissions: Array.from(user.permissions ?? []),
     status: user.status,
     forcePasswordChange: user.forcePasswordChange,
     lastLoginAt: user.lastLoginAt?.toISOString(),

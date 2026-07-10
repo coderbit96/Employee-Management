@@ -70,6 +70,14 @@ const EmployeeProfileSchema = new Schema(
       phone: String,
       relationship: String,
     },
+    deletedAt: {
+      type: Date,
+      index: true,
+    },
+    deletedBy: {
+      type: Schema.Types.ObjectId,
+      ref: "User",
+    },
   },
   { timestamps: true },
 );
@@ -88,4 +96,3 @@ export const EmployeeProfile =
     "EmployeeProfile",
     EmployeeProfileSchema,
   );
-
