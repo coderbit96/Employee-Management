@@ -6,6 +6,7 @@ import { connectToDatabase } from "@/lib/db/mongoose";
 import type { AttendancePunchInput } from "@/lib/validation/attendance";
 import { getPolicySettings } from "@/services/settings-service";
 import type { SafeUser } from "@/types/domain";
+import { canUseDailyAttendance, isWorkingDay } from "@/lib/attendance/policy";
 
 type RequestContext = {
   requestId?: string;
@@ -26,10 +27,13 @@ export class AttendanceServiceError extends Error {
 export type AttendanceSummary = {
   id?: string;
   employeeName?: string;
+  ownedByActor?: boolean;
   workDate: string;
   checkInAt?: string;
   checkOutAt?: string;
   durationMinutes: number;
+  grossDurationMinutes?: number;
+  breakDurationMinutes?: number;
   exception?: "NONE" | "SHORT_DAY" | "MISSING_CHECKOUT";
   checkInLocation?: LocationSnapshot;
   checkOutLocation?: LocationSnapshot;
@@ -51,6 +55,7 @@ type MaybeLocationSnapshot = {
 
 export async function getTodayAttendance(actor: SafeUser) {
   await connectToDatabase();
+  assertAttendanceRole(actor);
   const profile = await getActiveProfile(actor.id);
   const policy = await getPolicySettings();
   const workDate = getWorkDate(new Date(), policy.timezone);
@@ -68,9 +73,12 @@ export async function checkIn(
   context: RequestContext,
 ) {
   await connectToDatabase();
+  assertAttendanceRole(actor);
   const profile = await getActiveProfile(actor.id);
   const policy = await getPolicySettings();
+  assertCapturePolicy(input, { requireLocation: true, requirePhoto: true });
   const workDate = getWorkDate(new Date(), policy.timezone);
+  assertWorkingDay(workDate, policy.holidayDates);
   const existing = await Attendance.findOne({
     employeeId: profile._id,
     workDate,
@@ -91,6 +99,7 @@ export async function checkIn(
     checkInAt: new Date(),
     checkInLocation: input.location,
     checkInPhotoDataUrl: input.photoDataUrl,
+    deviceMetadata: { userAgent: context.userAgent, ipHash: context.ipHash },
     status: "CHECKED_IN",
   });
 
@@ -114,8 +123,10 @@ export async function checkOut(
   context: RequestContext,
 ) {
   await connectToDatabase();
+  assertAttendanceRole(actor);
   const profile = await getActiveProfile(actor.id);
   const policy = await getPolicySettings();
+  assertCapturePolicy(input, { requireLocation: true, requirePhoto: false });
   const workDate = getWorkDate(new Date(), policy.timezone);
   const attendance = await Attendance.findOne({
     employeeId: profile._id,
@@ -141,10 +152,13 @@ export async function checkOut(
   const checkOutAt = new Date();
   attendance.checkOutAt = checkOutAt;
   attendance.checkOutLocation = input.location;
-  attendance.durationMinutes = Math.max(
+  const grossDurationMinutes = Math.max(
     0,
     Math.round((checkOutAt.getTime() - attendance.checkInAt.getTime()) / 60000),
   );
+  attendance.grossDurationMinutes = grossDurationMinutes;
+  attendance.breakDurationMinutes = input.breakDurationMinutes;
+  attendance.durationMinutes = Math.max(0, grossDurationMinutes - input.breakDurationMinutes);
   attendance.exception =
     attendance.durationMinutes < policy.fullDayMinutes ? "SHORT_DAY" : "NONE";
   attendance.status = "CHECKED_OUT";
@@ -188,7 +202,7 @@ export async function listAttendanceRecords(actor: SafeUser) {
       .select("_id")
       .lean();
     filter.employeeId = { $in: team.map((profile) => profile._id) };
-  } else if (!["SUPER_ADMIN", "HR"].includes(actor.role)) {
+  } else if (!["SUPER_ADMIN", "ADMIN", "HR"].includes(actor.role)) {
     throw new AttendanceServiceError(
       "INSUFFICIENT_PERMISSION",
       "You cannot view attendance records.",
@@ -216,9 +230,42 @@ export async function listAttendanceRecords(actor: SafeUser) {
       toSummary(record.workDate, {
         ...record,
         employeeName: nameById.get(record.employeeId.toString()),
+        ownedByActor: record.userId.toString() === actor.id,
       }),
     ),
   };
+}
+
+function assertCapturePolicy(
+  input: AttendancePunchInput,
+  policy: { requireLocation: boolean; requirePhoto: boolean },
+) {
+  if (policy.requireLocation && !input.location) {
+    throw new AttendanceServiceError("LOCATION_REQUIRED", "Location is required by the attendance policy.", 422);
+  }
+  if (policy.requirePhoto && !input.photoDataUrl) {
+    throw new AttendanceServiceError("PHOTO_REQUIRED", "A check-in photo is required by the attendance policy.", 422);
+  }
+}
+
+function assertAttendanceRole(actor: SafeUser) {
+  if (!canUseDailyAttendance(actor.role)) {
+    throw new AttendanceServiceError(
+      "ATTENDANCE_ROLE_REQUIRED",
+      "Daily attendance is available only to Employee, HR, and Manager accounts.",
+      403,
+    );
+  }
+}
+
+function assertWorkingDay(workDate: string, holidayDates: string[]) {
+  if (!isWorkingDay(workDate, holidayDates)) {
+    throw new AttendanceServiceError(
+      "NOT_A_WORKING_DAY",
+      "Attendance cannot be recorded on a configured Sunday or holiday.",
+      422,
+    );
+  }
 }
 
 async function getActiveProfile(userId: string) {
@@ -254,9 +301,12 @@ function toSummary(
     checkInAt: Date;
     checkOutAt?: Date | null;
     durationMinutes?: number | null;
+    grossDurationMinutes?: number | null;
+    breakDurationMinutes?: number | null;
     status: "CHECKED_IN" | "CHECKED_OUT";
     exception?: "NONE" | "SHORT_DAY" | "MISSING_CHECKOUT" | null;
     employeeName?: string;
+    ownedByActor?: boolean;
     checkInLocation?: MaybeLocationSnapshot | null;
     checkOutLocation?: MaybeLocationSnapshot | null;
     checkInPhotoDataUrl?: string | null;
@@ -273,10 +323,13 @@ function toSummary(
   return {
     id: attendance._id.toString(),
     employeeName: attendance.employeeName,
+    ownedByActor: attendance.ownedByActor,
     workDate,
     checkInAt: attendance.checkInAt.toISOString(),
     checkOutAt: attendance.checkOutAt?.toISOString(),
     durationMinutes: attendance.durationMinutes ?? 0,
+    grossDurationMinutes: attendance.grossDurationMinutes ?? attendance.durationMinutes ?? 0,
+    breakDurationMinutes: attendance.breakDurationMinutes ?? 0,
     exception: attendance.exception ?? "NONE",
     checkInLocation: normalizeLocation(attendance.checkInLocation),
     checkOutLocation: normalizeLocation(attendance.checkOutLocation),

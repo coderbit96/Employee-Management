@@ -22,7 +22,7 @@ type CreateUserResult =
       };
     };
 
-const roles = ["HR", "MANAGER", "EMPLOYEE"];
+const roles = ["ADMIN", "HR", "MANAGER", "EMPLOYEE"];
 
 export function CreateUserForm() {
   const router = useRouter();
@@ -82,7 +82,7 @@ export function CreateUserForm() {
       <div className="md:col-span-2">
         <h2 className="text-lg font-semibold text-slate-950">Create account</h2>
         <p className="mt-1 text-sm text-slate-600">
-          Set a password now so the user can sign in from the normal login page.
+          Set a temporary password. The user must change it after signing in.
         </p>
       </div>
 

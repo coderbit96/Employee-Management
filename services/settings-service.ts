@@ -23,7 +23,7 @@ export class SettingsServiceError extends Error {
 export async function getOrganizationSettings(actor: SafeUser) {
   await connectToDatabase();
 
-  if (!["SUPER_ADMIN", "HR", "MANAGER"].includes(actor.role)) {
+  if (!["SUPER_ADMIN", "ADMIN", "HR", "MANAGER"].includes(actor.role)) {
     throw new SettingsServiceError(
       "INSUFFICIENT_PERMISSION",
       "You cannot view organization settings.",
@@ -43,7 +43,7 @@ export async function updateOrganizationSettings(
 ) {
   await connectToDatabase();
 
-  if (actor.role !== "SUPER_ADMIN") {
+  if (actor.role !== "SUPER_ADMIN" && !actor.permissions.includes("MANAGE_SETTINGS")) {
     throw new SettingsServiceError(
       "INSUFFICIENT_PERMISSION",
       "Only the Super Admin can update organization settings.",
@@ -61,18 +61,6 @@ export async function updateOrganizationSettings(
     settings.annualPaidLeaveDays = input.annualPaidLeaveDays;
   }
   if (input.holidayDates !== undefined) settings.holidayDates = input.holidayDates;
-  if (input.attendanceCapture) {
-    const existingCapture = settings.attendanceCapture ?? {
-      requireLocation: false,
-      requirePhoto: false,
-    };
-    settings.attendanceCapture = {
-      requireLocation: existingCapture.requireLocation ?? false,
-      requirePhoto: existingCapture.requirePhoto ?? false,
-      ...input.attendanceCapture,
-    };
-  }
-
   await settings.save();
 
   await writeAuditLog({
@@ -99,7 +87,7 @@ async function getOrCreateSettings() {
   return OrganizationSettings.findOneAndUpdate(
     { key: "default" },
     { $setOnInsert: { key: "default" } },
-    { upsert: true, new: true },
+    { upsert: true, returnDocument: "after" },
   );
 }
 
@@ -108,19 +96,11 @@ function toSettings(settings: {
   fullDayMinutes?: number | null;
   annualPaidLeaveDays?: number | null;
   holidayDates?: string[] | null;
-  attendanceCapture?: {
-    requireLocation?: boolean | null;
-    requirePhoto?: boolean | null;
-  } | null;
 }) {
   return {
     timezone: settings.timezone ?? "Asia/Kolkata",
     fullDayMinutes: settings.fullDayMinutes ?? 480,
     annualPaidLeaveDays: settings.annualPaidLeaveDays ?? 18,
     holidayDates: settings.holidayDates ?? [],
-    attendanceCapture: {
-      requireLocation: settings.attendanceCapture?.requireLocation ?? false,
-      requirePhoto: settings.attendanceCapture?.requirePhoto ?? false,
-    },
   };
 }

@@ -58,7 +58,6 @@ const SalaryPaymentSchema = new Schema(
       index: true,
     },
     paymentMethod: String,
-    paymentReference: String,
     paymentDate: Date,
     exceptionSnapshot: {
       attendanceDays: {

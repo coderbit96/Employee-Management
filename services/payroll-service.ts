@@ -10,6 +10,7 @@ import type {
   ListSalaryPaymentsQuery,
   MarkPaidInput,
   ReversePaymentInput,
+  UpdateSalaryPaymentInput,
 } from "@/lib/validation/payroll";
 import type { SafeUser } from "@/types/domain";
 import { createNotifications } from "@/services/notification-service";
@@ -59,6 +60,8 @@ export async function createSalaryPayment(
       throw new PayrollServiceError("EMPLOYEE_NOT_FOUND", "Employee not found.", 404);
     }
 
+    await assertEmployeeInPayrollScope(actor, employee._id);
+
     const duplicatePaid = await SalaryPayment.findOne({
       employeeId: employee._id,
       payPeriod: input.payPeriod,
@@ -102,7 +105,6 @@ export async function createSalaryPayment(
       currency: employee.salary?.currency ?? "INR",
       status: "DRAFT",
       paymentMethod: input.paymentMethod,
-      paymentReference: input.paymentReference,
       exceptionSnapshot,
       processedBy: actor.id,
     });
@@ -141,6 +143,9 @@ export async function listSalaryPayments(
 
   if (actor.role === "EMPLOYEE") {
     filter.userId = new Types.ObjectId(actor.id);
+  } else if (actor.role === "MANAGER") {
+    const manager = await EmployeeProfile.findOne({ userId: actor.id, deletedAt: { $exists: false } }).select("_id").lean();
+    filter.employeeId = manager ? { $in: (await EmployeeProfile.find({ managerId: manager._id }).select("_id").lean()).map((item) => item._id) } : { $in: [] };
   } else if (!canViewPayroll(actor)) {
     throw new PayrollServiceError(
       "INSUFFICIENT_PERMISSION",
@@ -182,19 +187,11 @@ export async function markSalaryPaymentPaid(
   assertCanProcessPayroll(actor);
   const payment = await getPayment(paymentId);
 
-  if (payment.status === "REVERSED") {
+  if (!["DRAFT", "PROCESSING"].includes(payment.status)) {
     throw new PayrollServiceError(
       "PAYMENT_REVERSED",
-      "A reversed payment cannot be marked paid.",
+      "Only a draft or processing payment can be marked paid.",
       409,
-    );
-  }
-
-  if (!input.paymentReference?.trim()) {
-    throw new PayrollServiceError(
-      "PAYMENT_REFERENCE_REQUIRED",
-      "Payment reference is required before marking salary paid.",
-      422,
     );
   }
 
@@ -216,7 +213,6 @@ export async function markSalaryPaymentPaid(
   payment.status = "PAID";
   payment.paymentDate = new Date();
   payment.paymentMethod = input.paymentMethod ?? payment.paymentMethod;
-  payment.paymentReference = input.paymentReference ?? payment.paymentReference;
   payment.processedBy = new Types.ObjectId(actor.id);
   await payment.save();
 
@@ -239,12 +235,34 @@ export async function markSalaryPaymentPaid(
     {
       recipientUserId: payment.userId,
       title: "Salary payment received",
-      message: `${payment.payPeriod} salary payment was marked paid. Reference: ${payment.paymentReference}.`,
+      message: `${payment.payPeriod} salary payment was marked paid.`,
       entityType: "SalaryPayment",
       entityId: payment._id,
     },
+    {
+      recipientUserId: payment.userId,
+      title: "Salary payment received",
+      message: `${payment.payPeriod} salary payment was marked paid.`,
+      entityType: "SalaryPayment",
+      entityId: payment._id,
+      channel: "EMAIL",
+    },
   ]);
 
+  return { salaryPayment: toSalaryPayment(payment) };
+}
+
+export async function updateSalaryPayment(paymentId: string, input: UpdateSalaryPaymentInput, actor: SafeUser, context: RequestContext) {
+  await connectToDatabase(); assertCanProcessPayroll(actor); const payment = await getPayment(paymentId); await assertEmployeeInPayrollScope(actor, payment.employeeId);
+  const allowed: Record<string, string[]> = { DRAFT: ["DRAFT", "PROCESSING", "FAILED"], PROCESSING: ["DRAFT", "PROCESSING", "FAILED"], FAILED: ["DRAFT", "FAILED"] };
+  if (!allowed[payment.status]?.includes(input.status)) throw new PayrollServiceError("INVALID_TRANSITION", `Cannot transition ${payment.status} to ${input.status}.`, 409);
+  if (input.deductions !== undefined || input.bonuses !== undefined) {
+    if (payment.status !== "DRAFT") throw new PayrollServiceError("PAYMENT_LOCKED", "Amounts can be edited only while the payment is a draft.", 409);
+    payment.deductions = input.deductions ?? payment.deductions; payment.bonuses = input.bonuses ?? payment.bonuses; payment.netAmount = payment.baseAmount + payment.bonuses - payment.deductions;
+    if (payment.netAmount < 0) throw new PayrollServiceError("NEGATIVE_NET_PAY", "Net salary cannot be negative.", 422);
+  }
+  payment.status = input.status; if (input.paymentMethod !== undefined) payment.paymentMethod = input.paymentMethod; await payment.save();
+  await writeAuditLog({ actor, action: "SALARY_PAYMENT_UPDATED", entityType: "SalaryPayment", entityId: payment._id, ...context, summary: { status: payment.status } });
   return { salaryPayment: toSalaryPayment(payment) };
 }
 
@@ -256,7 +274,7 @@ export async function reverseSalaryPayment(
 ) {
   await connectToDatabase();
 
-  if (actor.role !== "SUPER_ADMIN") {
+  if (actor.role !== "SUPER_ADMIN" && !actor.permissions.includes("PROCESS_PAYROLL")) {
     throw new PayrollServiceError(
       "INSUFFICIENT_PERMISSION",
       "Only the Super Admin can reverse salary payments.",
@@ -305,19 +323,20 @@ export async function deleteSalaryPaymentHistory(
 ) {
   await connectToDatabase();
 
-  if (actor.role !== "SUPER_ADMIN") {
+  if (!canClearPayrollHistory(actor)) {
     throw new PayrollServiceError(
       "INSUFFICIENT_PERMISSION",
-      "Only the Super Admin can delete salary history.",
+      "You cannot clear salary payment history.",
       403,
     );
   }
 
   const payment = await getPayment(paymentId);
+  await payment.deleteOne();
 
   await writeAuditLog({
     actor,
-    action: "SALARY_PAYMENT_HISTORY_DELETED",
+    action: "SALARY_PAYMENT_HISTORY_CLEARED",
     entityType: "SalaryPayment",
     entityId: payment._id,
     requestId: context.requestId,
@@ -331,25 +350,33 @@ export async function deleteSalaryPaymentHistory(
     },
   });
 
-  await SalaryPayment.deleteOne({ _id: payment._id });
-
-  return {
-    deleted: true,
-    paymentId,
-  };
+  return { deleted: true, paymentId };
 }
 
 function canViewPayroll(actor: SafeUser) {
-  return ["SUPER_ADMIN", "HR", "MANAGER"].includes(actor.role);
+  return ["SUPER_ADMIN", "ADMIN", "HR", "MANAGER"].includes(actor.role);
 }
 
 function assertCanProcessPayroll(actor: SafeUser) {
-  if (!["SUPER_ADMIN", "HR", "MANAGER"].includes(actor.role)) {
+  if (!["SUPER_ADMIN", "ADMIN", "HR", "MANAGER"].includes(actor.role) && !actor.permissions.includes("PROCESS_PAYROLL")) {
     throw new PayrollServiceError(
       "INSUFFICIENT_PERMISSION",
       "You cannot process salary payments.",
       403,
     );
+  }
+}
+
+function canClearPayrollHistory(actor: SafeUser) {
+  return ["SUPER_ADMIN", "ADMIN", "HR"].includes(actor.role);
+}
+
+async function assertEmployeeInPayrollScope(actor: SafeUser, employeeId: Types.ObjectId) {
+  if (actor.role !== "MANAGER") return;
+  const manager = await EmployeeProfile.findOne({ userId: actor.id, deletedAt: { $exists: false } }).select("_id").lean();
+  const teamMember = manager && await EmployeeProfile.exists({ _id: employeeId, managerId: manager._id });
+  if (!teamMember) {
+    throw new PayrollServiceError("OUT_OF_SCOPE", "Managers can process salary only for assigned team members.", 403);
   }
 }
 
@@ -436,7 +463,6 @@ function toSalaryPayment(payment: {
   currency: string;
   status: string;
   paymentMethod?: string | null;
-  paymentReference?: string | null;
   paymentDate?: Date | null;
   exceptionSnapshot?: {
     attendanceDays?: number | null;
@@ -461,7 +487,6 @@ function toSalaryPayment(payment: {
     currency: payment.currency,
     status: payment.status,
     paymentMethod: payment.paymentMethod ?? undefined,
-    paymentReference: payment.paymentReference ?? undefined,
     paymentDate: payment.paymentDate?.toISOString(),
     exceptionSnapshot: payment.exceptionSnapshot
       ? {

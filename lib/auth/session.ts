@@ -12,6 +12,7 @@ type SessionPayload = {
   role: Role;
   permissions: Permission[];
   sessionVersion: number;
+  forcePasswordChange: boolean;
 };
 
 function getSecret() {
@@ -28,6 +29,7 @@ export async function signSessionToken(payload: SessionPayload) {
     role: payload.role,
     permissions: [...payload.permissions],
     sessionVersion: payload.sessionVersion,
+    forcePasswordChange: payload.forcePasswordChange,
   })
     .setProtectedHeader({ alg: "HS256" })
     .setSubject(payload.sub)
@@ -43,6 +45,7 @@ export async function verifySessionToken(token: string) {
     role: payload.role,
     permissions: payload.permissions,
     sessionVersion: payload.sessionVersion,
+    forcePasswordChange: Boolean(payload.forcePasswordChange),
   } as SessionPayload & { sub: string };
 }
 
@@ -83,7 +86,11 @@ export function toSafeUser(user: {
     role: user.role,
     permissions: Array.from(user.permissions ?? []),
     status: user.status,
-    forcePasswordChange: user.forcePasswordChange,
+    // The bootstrap Super Admin is created directly by the trusted seed process,
+    // not with an administrator-issued temporary password. Provisioned accounts
+    // still have to complete their mandatory first-login password change.
+    forcePasswordChange:
+      user.role === "SUPER_ADMIN" ? false : user.forcePasswordChange,
     lastLoginAt: user.lastLoginAt?.toISOString(),
   };
 }

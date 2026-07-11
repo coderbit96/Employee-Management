@@ -3,10 +3,8 @@ import {
   apiError,
   apiOk,
   getRequestContext,
-  validationError,
 } from "@/lib/api/response";
 import { getCurrentUser } from "@/lib/auth/session";
-import { leaveDecisionSchema } from "@/lib/validation/leave-request";
 import {
   LeaveRequestServiceError,
   rejectLeaveRequest,
@@ -28,16 +26,9 @@ export async function POST(
     });
   }
 
-  const body = await request.json().catch(() => ({}));
-  const parsed = leaveDecisionSchema.safeParse(body);
-
-  if (!parsed.success) {
-    return validationError(parsed.error, context.requestId);
-  }
-
   try {
     const { id } = await params;
-    const data = await rejectLeaveRequest(id, parsed.data, currentUser, context);
+    const data = await rejectLeaveRequest(id, currentUser, context);
     return apiOk(data, { requestId: context.requestId });
   } catch (error) {
     if (error instanceof LeaveRequestServiceError) {
@@ -53,4 +44,3 @@ export async function POST(
     });
   }
 }
-

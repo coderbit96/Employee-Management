@@ -35,6 +35,9 @@ const NotificationSchema = new Schema(
       default: "UNREAD",
       index: true,
     },
+    deliveryStatus: { type: String, enum: ["NOT_APPLICABLE", "PENDING", "SENT", "FAILED"], default: "NOT_APPLICABLE", index: true },
+    deliveryAttempts: { type: Number, default: 0 },
+    lastDeliveryError: { type: String, select: false },
   },
   { timestamps: true },
 );

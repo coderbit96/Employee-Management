@@ -6,6 +6,8 @@ export const listEmployeesQuerySchema = z.object({
   status: z.enum(["ACTIVE", "SUSPENDED", "OFFBOARDED"]).optional(),
   page: z.coerce.number().int().min(1).default(1),
   limit: z.coerce.number().int().min(1).max(100).default(20),
+  sortBy: z.enum(["name", "employeeNumber", "department", "joiningDate", "status"]).default("name"),
+  sortOrder: z.enum(["asc", "desc"]).default("asc"),
 });
 
 export type ListEmployeesQuery = z.infer<typeof listEmployeesQuerySchema>;
@@ -23,9 +25,6 @@ export const updateEmployeeSchema = z.object({
 
 export type UpdateEmployeeInput = z.infer<typeof updateEmployeeSchema>;
 
-export const offboardEmployeeSchema = z.object({
-  exitDate: z.coerce.date(),
-  exitReason: z.string().trim().min(3).max(500),
+export const deleteEmployeeSchema = z.object({
+  confirmation: z.literal("DELETE"),
 });
-
-export type OffboardEmployeeInput = z.infer<typeof offboardEmployeeSchema>;

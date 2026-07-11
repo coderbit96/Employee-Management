@@ -15,10 +15,10 @@ export class AuditLogServiceError extends Error {
 export async function listAuditLogs(actor: SafeUser) {
   await connectToDatabase();
 
-  if (actor.role !== "SUPER_ADMIN") {
+  if (!["SUPER_ADMIN", "ADMIN"].includes(actor.role) && !actor.permissions.includes("VIEW_AUDIT_LOGS")) {
     throw new AuditLogServiceError(
       "INSUFFICIENT_PERMISSION",
-      "Only the Super Admin can view audit logs.",
+      "You cannot view audit logs.",
       403,
     );
   }

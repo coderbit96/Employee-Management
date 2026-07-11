@@ -11,7 +11,6 @@ export const createSalaryPaymentSchema = z
     deductions: z.coerce.number().min(0).default(0),
     bonuses: z.coerce.number().min(0).default(0),
     paymentMethod: z.string().trim().max(80).optional(),
-    paymentReference: z.string().trim().max(120).optional(),
   })
   .refine((value) => value.deductions >= 0 && value.bonuses >= 0)
   .refine((value) => Boolean(value.employeeId || value.employeeIds?.length), {
@@ -37,7 +36,6 @@ export type ListSalaryPaymentsQuery = z.infer<
 
 export const markPaidSchema = z.object({
   paymentMethod: z.string().trim().max(80).optional(),
-  paymentReference: z.string().trim().min(1, "Payment reference is required.").max(120),
 });
 
 export type MarkPaidInput = z.infer<typeof markPaidSchema>;
@@ -47,3 +45,11 @@ export const reversePaymentSchema = z.object({
 });
 
 export type ReversePaymentInput = z.infer<typeof reversePaymentSchema>;
+
+export const updateSalaryPaymentSchema = z.object({
+  status: z.enum(["DRAFT", "PROCESSING", "FAILED"]),
+  deductions: z.coerce.number().min(0).optional(),
+  bonuses: z.coerce.number().min(0).optional(),
+  paymentMethod: z.string().trim().max(80).optional(),
+});
+export type UpdateSalaryPaymentInput = z.infer<typeof updateSalaryPaymentSchema>;

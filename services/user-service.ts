@@ -5,10 +5,11 @@ import { connectToDatabase } from "@/lib/db/mongoose";
 import {
   hashPassword,
 } from "@/lib/auth/password";
-import { canCreateRole } from "@/lib/permissions/roles";
+import { canCreateRole, canManageUsers } from "@/lib/permissions/roles";
 import { toSafeUser } from "@/lib/auth/session";
 import type { CreateUserInput } from "@/lib/validation/user";
 import type { SafeUser } from "@/types/domain";
+import { createNotifications } from "@/services/notification-service";
 
 export class UserServiceError extends Error {
   constructor(
@@ -90,7 +91,7 @@ export async function createProvisionedUser(
       role: input.role,
       permissions: input.permissions,
       status: "ACTIVE",
-      forcePasswordChange: false,
+      forcePasswordChange: true,
       createdBy: actor.id,
     });
 
@@ -133,6 +134,10 @@ export async function createProvisionedUser(
     },
   });
 
+  await createNotifications([
+    { recipientUserId: createdUser._id, title: "Employee Management account created", message: `Your account is ready. Sign in at ${process.env.APP_URL ?? "http://localhost:3000"}/login using the temporary password supplied by your administrator; you will be required to change it.`, entityType: "User", entityId: createdUser._id, channel: "EMAIL" },
+  ]);
+
   return {
     user: safeUser,
   };
@@ -150,10 +155,10 @@ export async function listUsers(
 ) {
   await connectToDatabase();
 
-  if (actor.role !== "SUPER_ADMIN") {
+  if (!canManageUsers(actor)) {
     throw new UserServiceError(
       "INSUFFICIENT_PERMISSION",
-      "Only the Super Admin can list user accounts.",
+      "You cannot list user accounts.",
       403,
     );
   }
@@ -192,4 +197,54 @@ export async function listUsers(
       pages: Math.ceil(total / input.limit),
     },
   };
+}
+
+async function getManageableUser(targetId: string, actor: SafeUser) {
+  if (!canManageUsers(actor)) {
+    throw new UserServiceError("INSUFFICIENT_PERMISSION", "You cannot manage user accounts.", 403);
+  }
+  const target = await User.findById(targetId).select("+sessionVersion");
+  if (!target) throw new UserServiceError("NOT_FOUND", "User account was not found.", 404);
+  if (target.role === "SUPER_ADMIN" || (target.role === "ADMIN" && actor.role !== "SUPER_ADMIN")) {
+    throw new UserServiceError("PRIVILEGED_ACCOUNT", "Only the Super Admin can manage privileged accounts.", 403);
+  }
+  return target;
+}
+
+export async function suspendUser(targetId: string, reason: string, actor: SafeUser, context: RequestContext) {
+  const target = await getManageableUser(targetId, actor);
+  if (["OFFBOARDED", "DELETED"].includes(target.status)) {
+    throw new UserServiceError("INVALID_STATUS", "This account cannot be suspended.", 409);
+  }
+  target.status = "SUSPENDED";
+  target.sessionVersion += 1;
+  await target.save();
+  await EmployeeProfile.updateOne({ userId: target._id }, { employmentStatus: "SUSPENDED" });
+  await writeAuditLog({ actor, action: "USER_SUSPENDED", entityType: "User", entityId: target._id, ...context, summary: { reason } });
+  return { user: toSafeUser(target) };
+}
+
+export async function reactivateUser(targetId: string, reason: string, actor: SafeUser, context: RequestContext) {
+  const target = await getManageableUser(targetId, actor);
+  if (target.status !== "SUSPENDED") {
+    throw new UserServiceError("INVALID_STATUS", "Only suspended accounts can be reactivated.", 409);
+  }
+  target.status = "ACTIVE";
+  target.sessionVersion += 1;
+  await target.save();
+  await EmployeeProfile.updateOne({ userId: target._id }, { employmentStatus: "ACTIVE" });
+  await writeAuditLog({ actor, action: "USER_REACTIVATED", entityType: "User", entityId: target._id, ...context, summary: { reason } });
+  return { user: toSafeUser(target) };
+}
+
+export async function adminResetPassword(targetId: string, password: string, actor: SafeUser, context: RequestContext) {
+  const target = await getManageableUser(targetId, actor);
+  target.passwordHash = await hashPassword(password);
+  target.forcePasswordChange = true;
+  target.failedLoginCount = 0;
+  target.lockUntil = undefined;
+  target.sessionVersion += 1;
+  await target.save();
+  await writeAuditLog({ actor, action: "USER_PASSWORD_RESET_BY_ADMIN", entityType: "User", entityId: target._id, ...context });
+  return { user: toSafeUser(target) };
 }

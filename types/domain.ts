@@ -1,5 +1,6 @@
 export const ROLES = [
   "SUPER_ADMIN",
+  "ADMIN",
   "HR",
   "MANAGER",
   "EMPLOYEE",
@@ -26,7 +27,6 @@ export const PERMISSIONS = [
   "MANAGE_SETTINGS",
   "PROCESS_PAYROLL",
   "APPROVE_LEAVE",
-  "ARCHIVE_ATTENDANCE",
 ] as const;
 
 export type Permission = (typeof PERMISSIONS)[number];

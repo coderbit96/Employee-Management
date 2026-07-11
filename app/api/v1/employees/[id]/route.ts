@@ -6,7 +6,7 @@ import {
   validationError,
 } from "@/lib/api/response";
 import { getCurrentUser } from "@/lib/auth/session";
-import { updateEmployeeSchema } from "@/lib/validation/employee";
+import { deleteEmployeeSchema, updateEmployeeSchema } from "@/lib/validation/employee";
 import {
   deleteEmployee,
   EmployeeServiceError,
@@ -68,6 +68,9 @@ export async function DELETE(
       requestId: context.requestId,
     });
   }
+
+  const parsed = deleteEmployeeSchema.safeParse(await request.json().catch(() => null));
+  if (!parsed.success) return validationError(parsed.error, context.requestId);
 
   try {
     const { id } = await params;

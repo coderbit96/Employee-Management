@@ -9,6 +9,7 @@ import {
 import { signSessionToken, toSafeUser } from "@/lib/auth/session";
 import { writeAuditLog } from "@/lib/audit/log";
 import { ROLES } from "@/types/domain";
+import { sendEmail } from "@/lib/email/mailer";
 import type {
   ChangePasswordInput,
   ForgotPasswordInput,
@@ -99,6 +100,9 @@ export async function loginUser(
   user.failedLoginCount = 0;
   user.lockUntil = undefined;
   user.status = user.status === "LOCKED" ? "ACTIVE" : user.status;
+  if (user.role === "SUPER_ADMIN" && user.forcePasswordChange) {
+    user.forcePasswordChange = false;
+  }
   user.lastLoginAt = new Date();
   await user.save();
 
@@ -108,6 +112,7 @@ export async function loginUser(
     role: user.role,
     permissions: user.permissions ?? [],
     sessionVersion: user.sessionVersion,
+    forcePasswordChange: user.forcePasswordChange,
   });
 
   await writeAuditLog({
@@ -165,6 +170,7 @@ export async function changePassword(
     role: user.role,
     permissions: user.permissions ?? [],
     sessionVersion: user.sessionVersion,
+    forcePasswordChange: user.forcePasswordChange,
   });
 
   await writeAuditLog({
@@ -240,9 +246,11 @@ export async function requestPasswordReset(
     summary: { identifier },
   });
 
-  return {
-    resetUrl: buildUrl(`/reset-password/${token}`),
-  };
+  const resetUrl = buildUrl(`/reset-password/${token}`);
+  if (user.email) {
+    await sendEmail({ to: user.email, subject: "Reset your Employee Management password", text: `Use this single-use link within one hour: ${resetUrl}` }).catch(() => undefined);
+  }
+  return { resetUrl: process.env.NODE_ENV === "production" ? undefined : resetUrl };
 }
 
 export async function resetPassword(
@@ -285,6 +293,7 @@ export async function resetPassword(
     role: user.role,
     permissions: user.permissions ?? [],
     sessionVersion: user.sessionVersion,
+    forcePasswordChange: user.forcePasswordChange,
   });
 
   await writeAuditLog({

@@ -9,7 +9,7 @@ export default async function AuditPage() {
     redirect("/login");
   }
 
-  if (user.role !== "SUPER_ADMIN") {
+  if (!["SUPER_ADMIN", "ADMIN"].includes(user.role) && !user.permissions.includes("VIEW_AUDIT_LOGS")) {
     return (
       <div className="rounded-lg border border-slate-200 bg-white p-5 text-sm text-slate-600">
         Your role cannot view audit logs.

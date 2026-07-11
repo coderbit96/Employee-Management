@@ -2,9 +2,8 @@ import { redirect } from "next/navigation";
 import { AttendanceHistory } from "@/components/attendance/attendance-history";
 import { ChangePasswordForm } from "@/components/auth/change-password-form";
 import { AttendanceCard } from "@/components/attendance/attendance-card";
-import { HrLeaveInbox } from "@/components/leave/hr-leave-inbox";
+import { AttendanceCorrectionInbox } from "@/components/attendance/attendance-correction-inbox";
 import { LeaveApprovalInbox } from "@/components/leave/leave-approval-inbox";
-import { LeaveMailForm } from "@/components/leave/leave-mail-form";
 import { LeaveRequestPanel } from "@/components/leave/leave-request-panel";
 import { NotificationList } from "@/components/notifications/notification-list";
 import { getCurrentUser } from "@/lib/auth/session";
@@ -12,22 +11,22 @@ import {
   getTodayAttendance,
   listAttendanceRecords,
 } from "@/services/attendance-service";
-import { listLeaveInbox } from "@/services/leave-message-service";
 import { listLeaveRequests } from "@/services/leave-request-service";
 import { listNotifications } from "@/services/notification-service";
+import { listAttendanceCorrections } from "@/services/attendance-correction-service";
 
 const cards = [
   {
     title: "Account provisioning",
-    body: "Super Admin creates HR, Manager, and Employee accounts with immediate login credentials.",
+    body: "Authorized Admins create unique accounts with temporary login credentials.",
   },
   {
     title: "Daily attendance",
     body: "Employees can check in and check out once per work date.",
   },
   {
-    title: "Leave mailbox",
-    body: "Employee leave mail appears in HR and Super Admin dashboards.",
+    title: "Leave management",
+    body: "Employees submit one formal leave request for balance tracking and approval.",
   },
 ];
 
@@ -42,19 +41,13 @@ export default async function DashboardPage() {
   const attendance = showEmployeeTools
     ? await getTodayAttendance(user).catch(() => null)
     : null;
-  const leaveInbox = ["SUPER_ADMIN", "HR"].includes(user.role)
-    ? await listLeaveInbox(user).catch(() => ({ messages: [] }))
-    : null;
   const myLeaveRequests = showEmployeeTools
     ? await listLeaveRequests(user, { scope: "mine" }).catch(() => ({
         leaveRequests: [],
       }))
     : null;
-  const pendingLeaveRequests = ["SUPER_ADMIN", "HR"].includes(user.role)
-    ? await listLeaveRequests(user, {
-        scope: "inbox",
-        status: "PENDING",
-      }).catch(() => ({ leaveRequests: [] }))
+  const pendingLeaveRequests = ["SUPER_ADMIN", "ADMIN", "HR"].includes(user.role)
+    ? { leaveRequests: (await Promise.all(["PENDING", "CANCELLATION_PENDING"].map((status) => listLeaveRequests(user, { scope: "inbox", status: status as "PENDING" | "CANCELLATION_PENDING" }).catch(() => ({ leaveRequests: [] }))))).flatMap((item) => item.leaveRequests) }
     : null;
   const attendanceRecords = await listAttendanceRecords(user).catch(() => ({
     records: [],
@@ -62,6 +55,18 @@ export default async function DashboardPage() {
   const notifications = await listNotifications(user).catch(() => ({
     notifications: [],
   }));
+  const corrections = ["SUPER_ADMIN", "ADMIN", "HR"].includes(user.role) ? await listAttendanceCorrections(user).catch(() => ({ corrections: [] })) : null;
+
+  if (user.forcePasswordChange) {
+    return (
+      <div className="mx-auto max-w-xl space-y-4">
+        <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
+          Change your temporary password before using the application.
+        </div>
+        <ChangePasswordForm />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -88,19 +93,17 @@ export default async function DashboardPage() {
 
       <AttendanceHistory records={attendanceRecords.records} />
 
+      {corrections ? <AttendanceCorrectionInbox corrections={corrections.corrections} /> : null}
+
       <NotificationList notifications={notifications.notifications} />
 
       {myLeaveRequests ? (
         <LeaveRequestPanel requests={myLeaveRequests.leaveRequests} />
       ) : null}
 
-      {showEmployeeTools ? <LeaveMailForm /> : null}
-
       {pendingLeaveRequests ? (
         <LeaveApprovalInbox requests={pendingLeaveRequests.leaveRequests} />
       ) : null}
-
-      {leaveInbox ? <HrLeaveInbox messages={leaveInbox.messages} /> : null}
 
       <ChangePasswordForm />
     </div>

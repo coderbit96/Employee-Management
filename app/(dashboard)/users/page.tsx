@@ -3,6 +3,7 @@ import { CreateUserForm } from "@/components/users/create-user-form";
 import { UserTable } from "@/components/users/user-table";
 import { getCurrentUser } from "@/lib/auth/session";
 import { listUsers } from "@/services/user-service";
+import { canManageUsers } from "@/lib/permissions/roles";
 
 export default async function UsersPage() {
   const user = await getCurrentUser();
@@ -11,7 +12,7 @@ export default async function UsersPage() {
     redirect("/login");
   }
 
-  const canCreateUsers = user.role === "SUPER_ADMIN";
+  const canCreateUsers = canManageUsers(user);
   const userList = canCreateUsers
     ? await listUsers(user, { page: 1, limit: 20 })
     : null;
@@ -24,8 +25,7 @@ export default async function UsersPage() {
           Accounts and access
         </h1>
         <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600">
-          Super Admin controls account creation. Public signup is intentionally
-          absent.
+          Authorized Admins control account creation. Public signup is intentionally absent.
         </p>
       </section>
 

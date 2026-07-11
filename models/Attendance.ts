@@ -40,6 +40,9 @@ const AttendanceSchema = new Schema(
       min: 0,
       default: 0,
     },
+    grossDurationMinutes: { type: Number, min: 0, default: 0 },
+    breakDurationMinutes: { type: Number, min: 0, default: 0 },
+    deviceMetadata: { userAgent: String, ipHash: String },
     exception: {
       type: String,
       enum: ["NONE", "SHORT_DAY", "MISSING_CHECKOUT"],

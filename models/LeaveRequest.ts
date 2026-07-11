@@ -70,7 +70,7 @@ const LeaveRequestSchema = new Schema(
     },
     status: {
       type: String,
-      enum: ["PENDING", "APPROVED", "REJECTED", "WITHDRAWN"],
+      enum: ["PENDING", "APPROVED", "REJECTED", "WITHDRAWN", "CANCELLATION_PENDING", "CANCELLED"],
       default: "PENDING",
       index: true,
     },
@@ -78,7 +78,7 @@ const LeaveRequestSchema = new Schema(
       {
         action: {
           type: String,
-          enum: ["APPROVED", "REJECTED", "WITHDRAWN"],
+          enum: ["APPROVED", "REJECTED", "WITHDRAWN", "CANCELLATION_REQUESTED", "CANCELLED", "CANCELLATION_REJECTED"],
           required: true,
         },
         actorId: {

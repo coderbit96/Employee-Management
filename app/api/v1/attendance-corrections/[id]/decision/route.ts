@@ -1,0 +1,6 @@
+import { NextRequest } from "next/server";
+import { apiError, apiOk, getRequestContext, validationError } from "@/lib/api/response";
+import { getCurrentUser } from "@/lib/auth/session";
+import { attendanceCorrectionDecisionSchema } from "@/lib/validation/attendance";
+import { AttendanceCorrectionError, decideAttendanceCorrection } from "@/services/attendance-correction-service";
+export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) { const context = getRequestContext(request); const actor = await getCurrentUser(); if (!actor) return apiError("UNAUTHENTICATED", "Please sign in.", { status: 401, requestId: context.requestId }); const parsed = attendanceCorrectionDecisionSchema.safeParse(await request.json().catch(() => null)); if (!parsed.success) return validationError(parsed.error, context.requestId); try { return apiOk(await decideAttendanceCorrection((await params).id, parsed.data, actor, context), { requestId: context.requestId }); } catch (error) { return error instanceof AttendanceCorrectionError ? apiError(error.code, error.message, { status: error.status, requestId: context.requestId }) : apiError("CORRECTION_DECISION_FAILED", "Unable to decide correction.", { status: 500, requestId: context.requestId }); } }

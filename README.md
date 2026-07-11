@@ -1,6 +1,6 @@
 # Employee Management System
 
-Next.js App Router rebuild based on the PRD in the parent workspace. The current implementation covers the Phase 1 foundation and the first Phase 2 identity/provisioning slice.
+Next.js App Router rebuild based on the PRD in the parent workspace. See [PRD_FEATURE_AUDIT.md](./PRD_FEATURE_AUDIT.md) for requirement coverage and verification notes.
 
 ## Implemented
 
@@ -17,12 +17,17 @@ Next.js App Router rebuild based on the PRD in the parent workspace. The current
 - Employee directory API with manager self-assignment and reporting-cycle prevention.
 - Super Admin/HR employee delete permanently removes the employee profile, linked login, attendance, leave, and salary records from MongoDB.
 - Daily attendance check-in/check-out with duration calculation.
-- Employee leave mail and HR/Super Admin mailbox.
 - Formal leave requests with overlap prevention and HR/Super Admin approval/rejection.
 - Salary payment records with draft, paid, and reversed statuses.
 - Payroll page for processors and employee payment history.
 - Super Admin audit log viewer.
 - Permission unit tests for Super Admin provisioning and employee directory boundaries.
+- Regular Admin role with permission-gated Admin creation and operational account provisioning.
+- Forced temporary-password change plus account suspend, reactivate, and Admin reset controls.
+- Team-scoped manager employee/payroll access and immutable salary history.
+- Attendance break/net calculations, mandatory capture policy, correction workflow, scoped Leaflet map, and bulk archive.
+- Pending leave editing/withdrawal and approved-leave cancellation approval workflow.
+- SMTP email delivery state/retry support, role-scoped workforce reports, settings UI, profile/session controls, and health endpoint.
 
 ## Setup
 
@@ -59,10 +64,7 @@ npm run test
 npm run build
 ```
 
-## Next PRD Phases
+## Remaining optional and deployment work
 
-- Add richer password reset and session management screens.
-- Add richer employee profile editing UI, suspension, and offboarding.
-- Add attendance photo/location metadata, correction workflow, history, and scoped map view.
-- Add leave ledger balances, paid/unpaid split, cancellation workflow, and yearly summaries.
-- Add notification retries, reports, advanced settings, and deployment hardening.
+- Optional MFA, payslip downloads, manager leave approval, calendar UI, and advanced exports.
+- Full integration/E2E coverage, managed backups, object storage, monitoring, and deployment runbooks.

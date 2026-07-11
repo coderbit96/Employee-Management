@@ -13,6 +13,18 @@ export const attendancePunchSchema = z.object({
     .trim()
     .max(150_000, "Photo preview is too large.")
     .optional(),
+  breakDurationMinutes: z.coerce.number().int().min(0).max(720).default(0),
 });
 
 export type AttendancePunchInput = z.infer<typeof attendancePunchSchema>;
+
+export const attendanceCorrectionSchema = z.object({
+  checkInAt: z.coerce.date(),
+  checkOutAt: z.coerce.date().optional(),
+  reason: z.string().trim().min(10).max(1000),
+}).refine((value) => !value.checkOutAt || value.checkOutAt > value.checkInAt, { message: "Check-out must be after check-in.", path: ["checkOutAt"] });
+
+export const attendanceCorrectionDecisionSchema = z.object({
+  action: z.enum(["APPROVED", "REJECTED"]),
+  note: z.string().trim().min(3).max(500),
+});

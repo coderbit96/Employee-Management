@@ -21,7 +21,16 @@ type LeaveRequest = {
 
 type ApiResponse =
   | { success: true; data: { leaveRequest?: LeaveRequest } }
-  | { success: false; error: { message: string } };
+  | {
+      success: false;
+      error: {
+        message: string;
+        fieldErrors?: {
+          fieldErrors?: Record<string, string[] | undefined>;
+          formErrors?: string[];
+        };
+      };
+    };
 
 export function LeaveRequestPanel({
   requests,
@@ -40,6 +49,8 @@ export function LeaveRequestPanel({
     event.preventDefault();
     const formElement = event.currentTarget;
     const form = new FormData(formElement);
+    const startDate = String(form.get("startDate") ?? "");
+    const halfDay = form.get("halfDay") === "on";
     setMessage("");
     setError("");
     setLoading(true);
@@ -49,9 +60,9 @@ export function LeaveRequestPanel({
       headers: { "content-type": "application/json" },
       body: JSON.stringify({
         leaveType: form.get("leaveType"),
-        startDate: form.get("startDate"),
-        endDate: form.get("endDate"),
-        halfDay: form.get("halfDay") === "on",
+        startDate,
+        endDate: halfDay ? startDate : form.get("endDate"),
+        halfDay,
         reason: form.get("reason"),
       }),
     });
@@ -59,7 +70,7 @@ export function LeaveRequestPanel({
     setLoading(false);
 
     if (!payload.success) {
-      setError(payload.error.message);
+      setError(getApiErrorMessage(payload));
       return;
     }
 
@@ -69,11 +80,33 @@ export function LeaveRequestPanel({
     router.refresh();
   }
 
+  async function withdraw(request: LeaveRequest) {
+    const reason = window.prompt("Why are you withdrawing this request?");
+    if (!reason) return;
+    const response = await fetch(`/api/v1/leave-requests/${request.id}/withdraw`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ reason }) });
+    const payload = (await response.json()) as ApiResponse;
+    if (!payload.success) setError(payload.error.message); else { setMessage("Leave request withdrawn."); router.refresh(); }
+  }
+
+  async function requestCancellation(request: LeaveRequest) { const reason = window.prompt("Why should this approved leave be cancelled?"); if (!reason) return; const response = await fetch(`/api/v1/leave-requests/${request.id}/request-cancellation`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ reason }) }); const payload = (await response.json()) as ApiResponse; if (!payload.success) setError(payload.error.message); else { setMessage("Cancellation sent for approval."); router.refresh(); } }
+
+  async function editRequest(request: LeaveRequest) { const startDate=window.prompt("Start date (YYYY-MM-DD)",request.startDate.slice(0,10)); if(!startDate)return; const endDate=window.prompt("End date (YYYY-MM-DD)",request.endDate.slice(0,10)); if(!endDate)return; const leaveType=window.prompt("Leave type: PAID, UNPAID, SICK, CASUAL, OTHER",request.leaveType); if(!leaveType)return; const reason=window.prompt("Reason",request.reason); if(!reason)return; const response=await fetch(`/api/v1/leave-requests/${request.id}`,{method:"PATCH",headers:{"content-type":"application/json"},body:JSON.stringify({leaveType,startDate,endDate,halfDay:request.halfDay,reason})});const payload=(await response.json()) as ApiResponse;if(!payload.success)setError(payload.error.message);else{setMessage("Leave request updated.");router.refresh();} }
+
   function updatePreview(event: FormEvent<HTMLFormElement>) {
-    const form = new FormData(event.currentTarget);
+    const formElement = event.currentTarget;
+    const form = new FormData(formElement);
     const startDate = String(form.get("startDate") ?? "");
-    const endDate = String(form.get("endDate") ?? "");
     const halfDay = form.get("halfDay") === "on";
+    const endDateInput = formElement.elements.namedItem("endDate");
+    if (
+      halfDay &&
+      startDate &&
+      endDateInput instanceof HTMLInputElement &&
+      endDateInput.value !== startDate
+    ) {
+      endDateInput.value = startDate;
+    }
+    const endDate = halfDay ? startDate : String(form.get("endDate") ?? "");
     const leaveType = String(form.get("leaveType") ?? "PAID");
 
     if (!startDate || !endDate) {
@@ -83,11 +116,11 @@ export function LeaveRequestPanel({
 
     const days = halfDay
       ? 0.5
-      : countWeekdays(new Date(startDate), new Date(endDate));
+      : countOfficeDays(new Date(startDate), new Date(endDate));
     const paidDays = leaveType === "UNPAID" ? 0 : days;
     const unpaidDays = Math.max(0, days - paidDays);
     setPreview(
-      `Preview: ${paidDays} paid day(s), ${unpaidDays} unpaid day(s). Weekends are excluded; holidays and balance are finalized by the server.`,
+      `Preview: ${paidDays} paid day(s), ${unpaidDays} unpaid day(s). Sundays are excluded; holidays and balance are finalized by the server.`,
     );
   }
 
@@ -123,6 +156,7 @@ export function LeaveRequestPanel({
           Reason
           <textarea
             name="reason"
+            minLength={3}
             className="mt-2 min-h-24 w-full rounded-md border border-slate-300 px-3 py-2"
             required
           />
@@ -173,6 +207,9 @@ export function LeaveRequestPanel({
                 Approval route: {request.approvalRoute.join(" -> ") || "-"}
               </p>
               <p className="mt-1 text-slate-700">{request.reason}</p>
+              {["PENDING", "REJECTED"].includes(request.status) ? <button type="button" onClick={() => withdraw(request)} className="mt-2 text-sm font-medium text-red-700 underline">Withdraw request</button> : null}
+              {request.status === "PENDING" ? <button type="button" onClick={() => editRequest(request)} className="ml-3 mt-2 text-sm font-medium text-emerald-700 underline">Edit request</button> : null}
+              {request.status === "APPROVED" ? <button type="button" onClick={() => requestCancellation(request)} className="mt-2 text-sm font-medium text-amber-700 underline">Request cancellation</button> : null}
             </article>
           ))}
           {!requests.length ? (
@@ -208,13 +245,13 @@ function Field({
   );
 }
 
-function countWeekdays(startDate: Date, endDate: Date) {
+function countOfficeDays(startDate: Date, endDate: Date) {
   let count = 0;
   const current = new Date(startDate);
 
   while (current <= endDate) {
     const day = current.getDay();
-    if (day !== 0 && day !== 6) {
+    if (day !== 0) {
       count += 1;
     }
     current.setDate(current.getDate() + 1);
@@ -229,4 +266,15 @@ function formatDate(value: string) {
     month: "short",
     year: "numeric",
   }).format(new Date(value));
+}
+
+function getApiErrorMessage(payload: Extract<ApiResponse, { success: false }>) {
+  const fieldErrors = payload.error.fieldErrors?.fieldErrors;
+  const messages = fieldErrors
+    ? Object.values(fieldErrors).flatMap((items) => items ?? [])
+    : [];
+  const formErrors = payload.error.fieldErrors?.formErrors ?? [];
+  const details = [...messages, ...formErrors].filter(Boolean);
+
+  return details.length ? details.join(" ") : payload.error.message;
 }

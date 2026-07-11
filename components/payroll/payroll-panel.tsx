@@ -30,16 +30,21 @@ export function PayrollPanel({
   payments,
   canProcess,
   canReverse,
+  canClearHistory,
 }: {
   employees: EmployeeListItem[];
   payments: SalaryPayment[];
   canProcess: boolean;
   canReverse: boolean;
+  canClearHistory: boolean;
 }) {
   const router = useRouter();
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState("");
+  const [selectedHistory, setSelectedHistory] = useState<string[]>([]);
+  const allVisibleSelected =
+    payments.length > 0 && payments.every((payment) => selectedHistory.includes(payment.id));
 
   async function createPayment(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -58,7 +63,6 @@ export function PayrollPanel({
         deductions: form.get("deductions") || 0,
         bonuses: form.get("bonuses") || 0,
         paymentMethod: form.get("paymentMethod") || undefined,
-        paymentReference: form.get("paymentReference") || undefined,
       }),
     });
     const payload = (await response.json()) as ApiResponse;
@@ -77,12 +81,6 @@ export function PayrollPanel({
   }
 
   async function markPaid(payment: SalaryPayment) {
-    const paymentReference = window.prompt("Enter payment reference");
-
-    if (!paymentReference) {
-      return;
-    }
-
     const paymentMethod = window.prompt("Payment method", "Bank transfer") ?? "";
     setError("");
     setMessage("");
@@ -93,7 +91,7 @@ export function PayrollPanel({
       {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ paymentReference, paymentMethod }),
+        body: JSON.stringify({ paymentMethod }),
       },
     );
     const payload = (await response.json()) as ApiResponse;
@@ -139,9 +137,28 @@ export function PayrollPanel({
     router.refresh();
   }
 
-  async function deleteHistory(payment: SalaryPayment) {
+  async function setStatus(payment: SalaryPayment, status: "DRAFT" | "PROCESSING" | "FAILED") { setLoading(`status:${payment.id}`); const response = await fetch(`/api/v1/salary-payments/${payment.id}`, { method: "PATCH", headers: { "content-type": "application/json" }, body: JSON.stringify({ status }) }); const payload = (await response.json()) as ApiResponse; setLoading(""); if (!payload.success) setError(payload.error.message); else { setMessage(`Payment moved to ${status}.`); router.refresh(); } }
+
+  function toggleHistorySelection(paymentId: string) {
+    setSelectedHistory((current) =>
+      current.includes(paymentId)
+        ? current.filter((id) => id !== paymentId)
+        : [...current, paymentId],
+    );
+  }
+
+  function toggleAllHistory() {
+    setSelectedHistory(allVisibleSelected ? [] : payments.map((payment) => payment.id));
+  }
+
+  async function clearSelectedHistory() {
+    if (!selectedHistory.length) {
+      setError("Select at least one salary history row to clear.");
+      return;
+    }
+
     const confirmed = window.confirm(
-      `Delete salary history for ${payment.employeeName} (${payment.payPeriod})?`,
+      `Clear ${selectedHistory.length} selected salary payment history record(s)? This deletes them from MongoDB.`,
     );
 
     if (!confirmed) {
@@ -150,20 +167,27 @@ export function PayrollPanel({
 
     setError("");
     setMessage("");
-    setLoading(`delete:${payment.id}`);
+    setLoading("clear-history");
 
-    const response = await fetch(`/api/v1/salary-payments/${payment.id}`, {
-      method: "DELETE",
-    });
-    const payload = (await response.json()) as ApiResponse;
+    const results = await Promise.all(
+      selectedHistory.map(async (paymentId) => {
+        const response = await fetch(`/api/v1/salary-payments/${paymentId}`, {
+          method: "DELETE",
+        });
+        const payload = (await response.json()) as ApiResponse;
+        return { paymentId, payload };
+      }),
+    );
+    const failed = results.find((result) => !result.payload.success);
     setLoading("");
 
-    if (!payload.success) {
-      setError(payload.error.message);
+    if (failed && !failed.payload.success) {
+      setError(failed.payload.error.message);
       return;
     }
 
-    setMessage("Salary history deleted.");
+    setSelectedHistory([]);
+    setMessage(`${results.length} salary history record(s) cleared.`);
     router.refresh();
   }
 
@@ -201,11 +225,6 @@ export function PayrollPanel({
           <Field name="deductions" label="Deductions" type="number" />
           <Field name="bonuses" label="Bonuses" type="number" />
           <Field name="paymentMethod" label="Payment method" required={false} />
-          <Field
-            name="paymentReference"
-            label="Payment reference"
-            required={false}
-          />
           {error ? (
             <p className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 md:col-span-2">
               {error}
@@ -227,15 +246,38 @@ export function PayrollPanel({
       ) : null}
 
       <section className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
-        <div className="border-b border-slate-200 px-5 py-4">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 px-5 py-4">
           <h2 className="text-lg font-semibold text-slate-950">
             Salary payment history
           </h2>
+          {canClearHistory ? (
+            <button
+              type="button"
+              onClick={clearSelectedHistory}
+              disabled={!selectedHistory.length || Boolean(loading)}
+              className="rounded-md border border-red-200 px-3 py-1.5 text-sm font-semibold text-red-700 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {loading === "clear-history"
+                ? "Clearing..."
+                : `Clear selected${selectedHistory.length ? ` (${selectedHistory.length})` : ""}`}
+            </button>
+          ) : null}
         </div>
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-slate-200 text-sm">
             <thead className="bg-slate-50 text-left text-slate-600">
               <tr>
+                {canClearHistory ? (
+                  <th className="px-5 py-3 font-medium">
+                    <input
+                      type="checkbox"
+                      checked={allVisibleSelected}
+                      onChange={toggleAllHistory}
+                      aria-label="Select all salary history"
+                      className="h-4 w-4"
+                    />
+                  </th>
+                ) : null}
                 <th className="px-5 py-3 font-medium">Employee</th>
                 <th className="px-5 py-3 font-medium">Period</th>
                 <th className="px-5 py-3 font-medium">Net</th>
@@ -250,6 +292,17 @@ export function PayrollPanel({
             <tbody className="divide-y divide-slate-100">
               {payments.map((payment) => (
                 <tr key={payment.id}>
+                  {canClearHistory ? (
+                    <td className="px-5 py-3">
+                      <input
+                        type="checkbox"
+                        checked={selectedHistory.includes(payment.id)}
+                        onChange={() => toggleHistorySelection(payment.id)}
+                        aria-label={`Select salary history for ${payment.employeeName} ${payment.payPeriod}`}
+                        className="h-4 w-4"
+                      />
+                    </td>
+                  ) : null}
                   <td className="px-5 py-3 text-slate-900">
                     {payment.employeeName}
                   </td>
@@ -273,17 +326,17 @@ export function PayrollPanel({
                   </td>
                   {canProcess ? (
                     <td className="whitespace-nowrap px-5 py-3 text-right">
-                      {payment.status !== "PAID" &&
-                      payment.status !== "REVERSED" ? (
-                        <button
+                      {["DRAFT", "PROCESSING"].includes(payment.status) ? (
+                        <><button
                           type="button"
                           onClick={() => markPaid(payment)}
                           disabled={Boolean(loading)}
                           className="rounded-md bg-emerald-700 px-3 py-1.5 text-sm font-semibold text-white transition hover:bg-emerald-800 disabled:bg-slate-400"
                         >
                           Mark paid
-                        </button>
+                        </button>{payment.status !== "PROCESSING" ? <button type="button" onClick={() => setStatus(payment, "PROCESSING")} className="ml-2 text-sm text-slate-700 underline">Processing</button> : null}<button type="button" onClick={() => setStatus(payment, payment.status === "FAILED" ? "DRAFT" : "FAILED")} className="ml-2 text-sm text-amber-700 underline">{payment.status === "FAILED" ? "Retry draft" : "Failed"}</button></>
                       ) : null}
+                      {payment.status === "FAILED" ? <button type="button" onClick={() => setStatus(payment, "DRAFT")} className="text-sm text-amber-700 underline">Retry as draft</button> : null}
                       {canReverse && payment.status === "PAID" ? (
                         <button
                           type="button"
@@ -294,18 +347,6 @@ export function PayrollPanel({
                           Reverse
                         </button>
                       ) : null}
-                      {canReverse ? (
-                        <button
-                          type="button"
-                          onClick={() => deleteHistory(payment)}
-                          disabled={Boolean(loading)}
-                          className="ml-2 rounded-md border border-slate-300 px-3 py-1.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:opacity-60"
-                        >
-                          {loading === `delete:${payment.id}`
-                            ? "Deleting..."
-                            : "Delete"}
-                        </button>
-                      ) : null}
                     </td>
                   ) : null}
                 </tr>
@@ -314,7 +355,7 @@ export function PayrollPanel({
                 <tr>
                   <td
                     className="px-5 py-5 text-slate-600"
-                    colSpan={canProcess ? 7 : 6}
+                    colSpan={historyTableColumnCount(canProcess, canClearHistory)}
                   >
                     No salary payments found.
                   </td>
@@ -353,4 +394,8 @@ function Field({
       />
     </label>
   );
+}
+
+function historyTableColumnCount(canProcess: boolean, canClearHistory: boolean) {
+  return 6 + (canProcess ? 1 : 0) + (canClearHistory ? 1 : 0);
 }

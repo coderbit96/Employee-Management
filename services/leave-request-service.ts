@@ -5,11 +5,15 @@ import { LeaveRequest } from "@/models/LeaveRequest";
 import { User } from "@/models/User";
 import { writeAuditLog } from "@/lib/audit/log";
 import { connectToDatabase } from "@/lib/db/mongoose";
+import {
+  canReceiveLeaveRequest,
+  canRequestLeave,
+  getLeaveApprovalRoute,
+} from "@/lib/leave/approval-policy";
 import { createNotifications } from "@/services/notification-service";
 import { getPolicySettings } from "@/services/settings-service";
 import type {
   CreateLeaveRequestInput,
-  LeaveDecisionInput,
   ListLeaveRequestsQuery,
 } from "@/lib/validation/leave-request";
 import type { Role, SafeUser } from "@/types/domain";
@@ -36,6 +40,7 @@ export async function createLeaveRequest(
   context: RequestContext,
 ) {
   await connectToDatabase();
+  assertLeaveRequestRole(actor);
   const profile = await getActiveProfile(actor.id);
 
   await assertNoOverlap(profile._id, input.startDate, input.endDate);
@@ -47,12 +52,12 @@ export async function createLeaveRequest(
   if (leaveBreakdown.requestedDays <= 0) {
     throw new LeaveRequestServiceError(
       "NO_WORKING_DAYS",
-      "Selected dates contain only weekends or holidays.",
+      "Selected dates contain only Sundays or holidays.",
       422,
     );
   }
 
-  const approvalRoute = getApprovalRoute(actor.role);
+  const approvalRoute = getLeaveApprovalRoute(actor.role);
 
   const request = await LeaveRequest.create({
     employeeId: profile._id,
@@ -131,9 +136,14 @@ export async function listLeaveRequests(
   } else if (!canViewLeaveInbox(actor)) {
     throw new LeaveRequestServiceError(
       "INSUFFICIENT_PERMISSION",
-      "Only HR or Super Admin can view leave requests.",
+      "Only HR, Admin, or Super Admin can view leave requests.",
       403,
     );
+  } else {
+    filter.employeeRole =
+      actor.role === "HR"
+        ? { $in: ["EMPLOYEE", "MANAGER"] }
+        : "HR";
   }
 
   const requests = await LeaveRequest.find(filter)
@@ -190,26 +200,84 @@ export async function getMyLeaveBalance(actor: SafeUser) {
 
 export async function approveLeaveRequest(
   requestId: string,
-  input: LeaveDecisionInput,
   actor: SafeUser,
   context: RequestContext,
 ) {
-  return decideLeaveRequest(requestId, "APPROVED", input, actor, context);
+  return decideLeaveRequest(requestId, "APPROVED", actor, context);
 }
 
 export async function rejectLeaveRequest(
   requestId: string,
-  input: LeaveDecisionInput,
   actor: SafeUser,
   context: RequestContext,
 ) {
-  return decideLeaveRequest(requestId, "REJECTED", input, actor, context);
+  return decideLeaveRequest(requestId, "REJECTED", actor, context);
+}
+
+export async function withdrawLeaveRequest(
+  requestId: string,
+  reason: string,
+  actor: SafeUser,
+  context: RequestContext,
+) {
+  await connectToDatabase();
+  if (!Types.ObjectId.isValid(requestId)) throw new LeaveRequestServiceError("NOT_FOUND", "Leave request not found.", 404);
+  const request = await LeaveRequest.findOne({ _id: requestId, userId: actor.id });
+  if (!request) throw new LeaveRequestServiceError("NOT_FOUND", "Leave request not found.", 404);
+  if (!["PENDING", "REJECTED"].includes(request.status)) {
+    throw new LeaveRequestServiceError("CANCELLATION_REQUIRED", "Approved leave requires an approver-managed cancellation workflow.", 409);
+  }
+  request.status = "WITHDRAWN";
+  request.approvalHistory.push({ action: "WITHDRAWN", actorId: new Types.ObjectId(actor.id), actorRole: actor.role, note: reason, decidedAt: new Date() });
+  await request.save();
+  await writeAuditLog({ actor, action: "LEAVE_REQUEST_WITHDRAWN", entityType: "LeaveRequest", entityId: request._id, ...context, summary: { reason } });
+  return { leaveRequest: toLeaveRequest(request) };
+}
+
+export async function updateLeaveRequest(requestId: string, input: CreateLeaveRequestInput, actor: SafeUser, context: RequestContext) {
+  await connectToDatabase(); if (!Types.ObjectId.isValid(requestId)) throw new LeaveRequestServiceError("NOT_FOUND", "Leave request not found.", 404);
+  const request = await LeaveRequest.findOne({ _id: requestId, userId: actor.id }); if (!request) throw new LeaveRequestServiceError("NOT_FOUND", "Leave request not found.", 404);
+  if (request.status !== "PENDING") throw new LeaveRequestServiceError("LEAVE_LOCKED", "Only pending leave requests can be edited.", 409);
+  await assertNoOverlap(request.employeeId, input.startDate, input.endDate, request._id);
+  const breakdown = await calculateLeaveBreakdown(request.employeeId, input); if (breakdown.requestedDays <= 0) throw new LeaveRequestServiceError("NO_WORKING_DAYS", "Selected dates contain only Sundays or holidays.", 422);
+  request.leaveType = input.leaveType; request.startDate = normalizeStart(input.startDate); request.endDate = normalizeEnd(input.endDate); request.halfDay = input.halfDay; request.reason = input.reason; request.requestedDays = breakdown.requestedDays; request.paidDays = breakdown.paidDays; request.unpaidDays = breakdown.unpaidDays; request.excludedDates = breakdown.excludedDates; await request.save();
+  await writeAuditLog({ actor, action: "LEAVE_REQUEST_UPDATED", entityType: "LeaveRequest", entityId: request._id, ...context, summary: { requestedDays: request.requestedDays } }); return { leaveRequest: toLeaveRequest(request) };
+}
+
+export async function requestLeaveCancellation(requestId: string, reason: string, actor: SafeUser, context: RequestContext) {
+  await connectToDatabase();
+  if (!Types.ObjectId.isValid(requestId)) throw new LeaveRequestServiceError("NOT_FOUND", "Leave request not found.", 404);
+  const request = await LeaveRequest.findOne({ _id: requestId, userId: actor.id });
+  if (!request) throw new LeaveRequestServiceError("NOT_FOUND", "Leave request not found.", 404);
+  if (request.status !== "APPROVED") throw new LeaveRequestServiceError("INVALID_STATUS", "Only approved leave can enter cancellation review.", 409);
+  request.status = "CANCELLATION_PENDING";
+  request.approvalHistory.push({ action: "CANCELLATION_REQUESTED", actorId: new Types.ObjectId(actor.id), actorRole: actor.role, note: reason, decidedAt: new Date() });
+  await request.save();
+  await writeAuditLog({ actor, action: "LEAVE_CANCELLATION_REQUESTED", entityType: "LeaveRequest", entityId: request._id, ...context, summary: { reason } });
+  return { leaveRequest: toLeaveRequest(request) };
+}
+
+export async function decideLeaveCancellation(requestId: string, approved: boolean, actor: SafeUser, context: RequestContext) {
+  await connectToDatabase();
+  if (!canViewLeaveInbox(actor)) throw new LeaveRequestServiceError("INSUFFICIENT_PERMISSION", "You cannot decide leave cancellations.", 403);
+  if (!Types.ObjectId.isValid(requestId)) throw new LeaveRequestServiceError("NOT_FOUND", "Leave request not found.", 404);
+  const request = await LeaveRequest.findById(requestId);
+  if (!request) throw new LeaveRequestServiceError("NOT_FOUND", "Leave request not found.", 404);
+  if (request.status !== "CANCELLATION_PENDING") throw new LeaveRequestServiceError("INVALID_STATUS", "This cancellation is no longer pending.", 409);
+  if (request.userId.toString() === actor.id) throw new LeaveRequestServiceError("SELF_APPROVAL_BLOCKED", "You cannot decide your own cancellation.", 403);
+  assertCanDecideLeaveRequest(actor, request.employeeRole);
+  request.status = approved ? "CANCELLED" : "APPROVED";
+  request.approvalHistory.push({ action: approved ? "CANCELLED" : "CANCELLATION_REJECTED", actorId: new Types.ObjectId(actor.id), actorRole: actor.role, decidedAt: new Date() });
+  await request.save();
+  if (approved && request.paidDays > 0) await LeaveLedger.updateOne({ employeeId: request.employeeId, year: getWorkYear(request.startDate) }, { $inc: { usedPaidDays: -request.paidDays } });
+  await createNotifications([{ recipientUserId: request.userId, title: approved ? "Leave cancellation approved" : "Leave cancellation rejected", message: approved ? "Your approved leave was cancelled." : "Your leave remains approved.", entityType: "LeaveRequest", entityId: request._id }]);
+  await writeAuditLog({ actor, action: approved ? "LEAVE_CANCELLATION_APPROVED" : "LEAVE_CANCELLATION_REJECTED", entityType: "LeaveRequest", entityId: request._id, ...context });
+  return { leaveRequest: toLeaveRequest(request) };
 }
 
 async function decideLeaveRequest(
   requestId: string,
   action: "APPROVED" | "REJECTED",
-  input: LeaveDecisionInput,
   actor: SafeUser,
   context: RequestContext,
 ) {
@@ -249,20 +317,13 @@ async function decideLeaveRequest(
     );
   }
 
-  if (request.employeeRole === "HR" && actor.role === "HR") {
-    throw new LeaveRequestServiceError(
-      "HR_APPROVAL_RESTRICTED",
-      "HR leave must be approved by the Super Admin.",
-      403,
-    );
-  }
+  assertCanDecideLeaveRequest(actor, request.employeeRole);
 
   request.status = action;
   request.approvalHistory.push({
     action,
     actorId: new Types.ObjectId(actor.id),
     actorRole: actor.role,
-    note: input.note,
     decidedAt: new Date(),
   });
   await request.save();
@@ -289,9 +350,7 @@ async function decideLeaveRequest(
     {
       recipientUserId: request.userId,
       title: `Leave request ${action.toLowerCase()}`,
-      message: input.note
-        ? `Your leave request was ${action.toLowerCase()}: ${input.note}`
-        : `Your leave request was ${action.toLowerCase()}.`,
+      message: `Your leave request was ${action.toLowerCase()}.`,
       entityType: "LeaveRequest",
       entityId: request._id,
     },
@@ -307,7 +366,6 @@ async function decideLeaveRequest(
     userAgent: context.userAgent,
     summary: {
       employeeName: request.employeeName,
-      note: input.note,
     },
   });
 
@@ -335,10 +393,12 @@ async function assertNoOverlap(
   employeeId: Types.ObjectId,
   startDate: Date,
   endDate: Date,
+  excludeId?: Types.ObjectId,
 ) {
   const overlap = await LeaveRequest.findOne({
     employeeId,
-    status: { $in: ["PENDING", "APPROVED"] },
+    ...(excludeId ? { _id: { $ne: excludeId } } : {}),
+    status: { $in: ["PENDING", "APPROVED", "CANCELLATION_PENDING"] },
     startDate: { $lte: normalizeEnd(endDate) },
     endDate: { $gte: normalizeStart(startDate) },
   }).lean();
@@ -353,7 +413,27 @@ async function assertNoOverlap(
 }
 
 function canViewLeaveInbox(actor: SafeUser) {
-  return ["SUPER_ADMIN", "HR"].includes(actor.role);
+  return ["SUPER_ADMIN", "ADMIN", "HR"].includes(actor.role);
+}
+
+function assertLeaveRequestRole(actor: SafeUser) {
+  if (!canRequestLeave(actor.role)) {
+    throw new LeaveRequestServiceError(
+      "LEAVE_ROLE_REQUIRED",
+      "Leave requests are available only to Employee, Manager, and HR accounts.",
+      403,
+    );
+  }
+}
+
+function assertCanDecideLeaveRequest(actor: SafeUser, employeeRole: string) {
+  if (!canReceiveLeaveRequest(actor.role, employeeRole as Role)) {
+    throw new LeaveRequestServiceError(
+      "LEAVE_APPROVER_RESTRICTED",
+      "This leave request is not assigned to your dashboard.",
+      403,
+    );
+  }
 }
 
 async function calculateLeaveBreakdown(
@@ -368,7 +448,7 @@ async function calculateLeaveBreakdown(
   const workingDates = dates.filter((date) => {
     const day = date.getUTCDay();
     const key = date.toISOString().slice(0, 10);
-    return day !== 0 && day !== 6 && !holidays.has(key);
+    return day !== 0 && !holidays.has(key);
   });
   const excludedDates = dates
     .filter((date) => !workingDates.some((workDate) => sameUtcDate(date, workDate)))
@@ -390,13 +470,9 @@ async function calculateLeaveBreakdown(
   };
 }
 
-function getApprovalRoute(employeeRole: string): Role[] {
-  return employeeRole === "HR" ? ["SUPER_ADMIN"] : ["HR", "SUPER_ADMIN"];
-}
-
 async function findApproverUsers(employeeRole: string) {
   return User.find({
-    role: { $in: getApprovalRoute(employeeRole) },
+    role: { $in: getLeaveApprovalRoute(employeeRole as Role) },
     status: "ACTIVE",
   })
     .select("_id")

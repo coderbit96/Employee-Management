@@ -58,52 +58,17 @@ export function EmployeeTable({
 
   async function removeEmployee(employee: EmployeeListItem) {
     const confirmed = window.confirm(
-      `Delete ${employee.name}? This will permanently delete the employee, login, attendance, leave, and salary records from MongoDB.`,
+      `Permanently delete ${employee.name}? Their login, attendance, leave, notifications, and payroll data will also be deleted from MongoDB. This cannot be undone.`,
     );
-
-    if (!confirmed) {
-      return;
-    }
+    if (!confirmed) return;
 
     setError("");
     setLoadingId(employee.id);
 
     const response = await fetch(`/api/v1/employees/${employee.id}`, {
       method: "DELETE",
-    });
-    const payload = (await response.json()) as ApiResponse;
-    setLoadingId("");
-
-    if (!payload.success) {
-      setError(payload.error.message);
-      return;
-    }
-
-    router.refresh();
-  }
-
-  async function offboard(employee: EmployeeListItem) {
-    const exitReason = window.prompt(`Exit reason for ${employee.name}?`);
-
-    if (!exitReason) {
-      return;
-    }
-
-    const exitDate =
-      window.prompt("Exit date (YYYY-MM-DD)", new Date().toISOString().slice(0, 10)) ??
-      "";
-
-    if (!exitDate) {
-      return;
-    }
-
-    setError("");
-    setLoadingId(employee.id);
-
-    const response = await fetch(`/api/v1/employees/${employee.id}/offboard`, {
-      method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ exitDate, exitReason }),
+      body: JSON.stringify({ confirmation: "DELETE" }),
     });
     const payload = (await response.json()) as ApiResponse;
     setLoadingId("");
@@ -186,16 +151,6 @@ export function EmployeeTable({
                     >
                       {loadingId === employee.id ? "Deleting..." : "Delete"}
                     </button>
-                    {employee.employmentStatus !== "OFFBOARDED" ? (
-                      <button
-                        type="button"
-                        onClick={() => offboard(employee)}
-                        disabled={loadingId === employee.id}
-                        className="ml-2 rounded-md border border-amber-200 px-3 py-1.5 text-sm font-medium text-amber-700 transition hover:bg-amber-50 disabled:opacity-60"
-                      >
-                        Offboard
-                      </button>
-                    ) : null}
                   </td>
                 ) : null}
               </tr>

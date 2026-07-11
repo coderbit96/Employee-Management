@@ -50,7 +50,6 @@ async function main() {
       "MANAGE_SETTINGS",
       "PROCESS_PAYROLL",
       "APPROVE_LEAVE",
-      "ARCHIVE_ATTENDANCE",
     ],
     status: "ACTIVE",
     forcePasswordChange: false,

@@ -55,6 +55,9 @@ export default async function DashboardLayout({
             >
               Audit
             </Link>
+            <Link href="/reports" className="rounded-md px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-100">Reports</Link>
+            <Link href="/settings" className="rounded-md px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-100">Settings</Link>
+            <Link href="/profile" className="rounded-md px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-100">Profile</Link>
             <LogoutButton />
           </nav>
         </div>

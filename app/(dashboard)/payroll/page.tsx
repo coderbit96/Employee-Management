@@ -13,9 +13,10 @@ export default async function PayrollPage() {
 
   const canProcess = ["SUPER_ADMIN", "HR", "MANAGER"].includes(user.role);
   const canReverse = user.role === "SUPER_ADMIN";
+  const canClearHistory = ["SUPER_ADMIN", "ADMIN", "HR"].includes(user.role);
   const [employees, payments] = await Promise.all([
     canProcess
-      ? listEmployees(user, { page: 1, limit: 100, status: "ACTIVE" }).catch(() => ({
+      ? listEmployees(user, { page: 1, limit: 100, status: "ACTIVE", sortBy: "name", sortOrder: "asc" }).catch(() => ({
           employees: [],
           pagination: { page: 1, limit: 100, total: 0, pages: 0 },
         }))
@@ -43,6 +44,7 @@ export default async function PayrollPage() {
         payments={payments.salaryPayments}
         canProcess={canProcess}
         canReverse={canReverse}
+        canClearHistory={canClearHistory}
       />
     </div>
   );

@@ -32,14 +32,14 @@ export function LeaveApprovalInbox({
   const [loading, setLoading] = useState("");
 
   async function decide(id: string, action: "approve" | "reject") {
-    const note = window.prompt("Optional comment for this decision") ?? "";
     setError("");
     setLoading(`${action}:${id}`);
 
-    const response = await fetch(`/api/v1/leave-requests/${id}/${action}`, {
+    const request = requests.find((item) => item.id === id);
+    const endpoint = request?.status === "CANCELLATION_PENDING" ? `${action}-cancellation` : action;
+    const response = await fetch(`/api/v1/leave-requests/${id}/${endpoint}`, {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ note }),
     });
     const payload = (await response.json()) as ApiResponse;
     setLoading("");
@@ -58,7 +58,7 @@ export function LeaveApprovalInbox({
         <div>
           <p className="text-sm font-medium text-emerald-800">Approval inbox</p>
           <h2 className="mt-1 text-lg font-semibold text-slate-950">
-            Pending leave requests
+            Pending leave and cancellation requests
           </h2>
         </div>
         <span className="rounded-full bg-amber-50 px-3 py-1 text-sm font-medium text-amber-800">
