@@ -52,7 +52,7 @@ export function LoginForm() {
     >
       <div className="mb-6">
         <p className="text-sm font-medium uppercase tracking-[0.24em] text-yellow-400">
-          Secure access
+          JOYDIP GHOSH
         </p>
         <h1 className="mt-2 text-3xl font-semibold text-yellow-50">
           Employee Management System

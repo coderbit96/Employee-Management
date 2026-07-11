@@ -49,81 +49,79 @@ a:hover {
   transform: none !important;
 }
 
-.constellation-bg {
+.login-page-shell {
+  background: linear-gradient(-45deg, #020201, #0a0802, #2a1a03, #4a3000);
+  background-size: 400% 400%;
+  animation: loginGradientMove 12s ease infinite;
+}
+
+.login-background-animation {
   position: absolute;
   inset: 0;
+  z-index: 0;
   overflow: hidden;
-  background:
-    radial-gradient(circle at 24% 18%, rgba(242, 183, 5, 0.28), transparent 28%),
-    radial-gradient(circle at 78% 32%, rgba(183, 121, 0, 0.24), transparent 26%),
-    linear-gradient(135deg, #050503 0%, #121009 46%, #231800 100%);
+  pointer-events: none;
 }
 
-.constellation-bg::before,
-.constellation-bg::after {
-  content: "";
+.login-blob {
   position: absolute;
-  inset: -20%;
-  background-image:
-    radial-gradient(circle, rgba(255, 219, 119, 0.92) 0 1px, transparent 1.7px),
-    radial-gradient(circle, rgba(255, 247, 214, 0.52) 0 1px, transparent 1.8px);
-  background-position: 0 0, 34px 42px;
-  background-size: 130px 130px, 190px 190px;
-  animation: starDrift 24s linear infinite;
-  opacity: 0.58;
+  border-radius: 50%;
+  filter: blur(80px);
+  opacity: 0.5;
+  animation: loginBlobMove 15s ease-in-out infinite alternate;
 }
 
-.constellation-bg::after {
-  animation-duration: 38s;
-  animation-direction: reverse;
-  opacity: 0.36;
+.login-blob-one {
+  top: -100px;
+  left: -100px;
+  width: 400px;
+  height: 400px;
+  background: #b77900;
 }
 
-.constellation-star {
+.login-blob-two {
+  right: -100px;
+  bottom: -80px;
+  width: 350px;
+  height: 350px;
+  background: #f2b705;
+  animation-delay: 2s;
+}
+
+.login-blob-three {
+  top: 35%;
+  left: 45%;
+  width: 300px;
+  height: 300px;
+  background: #7c4a00;
+  animation-delay: 4s;
+}
+
+.login-particles {
   position: absolute;
+  inset: 0;
+}
+
+.login-particle {
+  position: absolute;
+  bottom: -12vh;
+  border-radius: 50%;
+  background: rgba(255, 235, 156, var(--particle-opacity));
+  box-shadow: 0 0 12px rgba(242, 183, 5, 0.8);
+  animation: loginParticleFloat linear infinite;
+}
+
+.login-spotlight {
+  position: fixed;
   z-index: 1;
-  width: 6px;
-  height: 6px;
-  border-radius: 999px;
-  background: #ffe8a3;
-  box-shadow:
-    0 0 0 6px rgba(242, 183, 5, 0.08),
-    0 0 20px rgba(242, 183, 5, 0.95),
-    0 0 42px rgba(242, 183, 5, 0.28);
-  animation: starTwinkle 3.4s ease-in-out infinite, constellationFloat 9s ease-in-out infinite;
-}
-
-.constellation-star:nth-of-type(3n) {
-  width: 4px;
-  height: 4px;
-  opacity: 0.75;
-}
-
-.constellation-star:nth-of-type(4n) {
-  width: 9px;
-  height: 9px;
-}
-
-.constellation-orbit {
-  position: absolute;
-  width: 48rem;
-  height: 48rem;
-  border: 1px solid rgba(242, 183, 5, 0.18);
-  border-radius: 999px;
-  filter: blur(0.2px);
-  animation: slowSpin 28s linear infinite;
-}
-
-.constellation-orbit-one {
-  left: -12rem;
-  top: -18rem;
-}
-
-.constellation-orbit-two {
-  right: -18rem;
-  bottom: -20rem;
-  animation-duration: 42s;
-  animation-direction: reverse;
+  width: 500px;
+  height: 500px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(242, 183, 5, 0.18), transparent 65%);
+  opacity: 0;
+  pointer-events: none;
+  transform: translate(-50%, -50%);
+  transition: opacity 180ms ease;
 }
 
 .gold-hover {
@@ -173,40 +171,48 @@ a:hover {
   box-shadow: 0 18px 40px rgba(120, 79, 0, 0.12);
 }
 
-@keyframes starDrift {
+@keyframes loginGradientMove {
+  0% {
+    background-position: 0% 50%;
+  }
+
+  50% {
+    background-position: 100% 50%;
+  }
+
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+@keyframes loginBlobMove {
+  0% {
+    transform: translate(0, 0) scale(1);
+  }
+
+  50% {
+    transform: translate(80px, 50px) scale(1.2);
+  }
+
+  100% {
+    transform: translate(-40px, 100px) scale(0.9);
+  }
+}
+
+@keyframes loginParticleFloat {
   from {
-    transform: translate3d(0, 0, 0) rotate(0deg);
+    opacity: 0;
+    transform: translateY(110vh) scale(0.5);
   }
-  to {
-    transform: translate3d(60px, -40px, 0) rotate(6deg);
-  }
-}
 
-@keyframes starTwinkle {
-  0%,
-  100% {
-    opacity: 0.48;
-    filter: brightness(0.85);
-  }
-  50% {
+  20%,
+  80% {
     opacity: 1;
-    filter: brightness(1.22);
   }
-}
 
-@keyframes constellationFloat {
-  0%,
-  100% {
-    transform: translate3d(0, 0, 0) scale(0.92);
-  }
-  50% {
-    transform: translate3d(10px, -14px, 0) scale(1.15);
-  }
-}
-
-@keyframes slowSpin {
   to {
-    transform: rotate(360deg);
+    opacity: 0;
+    transform: translateY(-20vh) scale(1.3);
   }
 }
 
