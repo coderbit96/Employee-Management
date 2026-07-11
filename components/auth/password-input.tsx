@@ -45,12 +45,51 @@ export function PasswordInput({
         <button
           type="button"
           onClick={() => setVisible((current) => !current)}
-          className="absolute inset-y-0 right-2 my-auto h-8 rounded px-2 text-xs font-semibold text-emerald-800 transition hover:bg-emerald-50"
+          className="password-visibility-button absolute inset-y-0 right-2 my-auto flex h-8 w-8 items-center justify-center rounded text-yellow-900"
           aria-label={visible ? "Hide password" : "Show password"}
+          title={visible ? "Hide password" : "Show password"}
         >
-          {visible ? "Hide" : "Show"}
+          {visible ? <EyeOffIcon /> : <EyeIcon />}
         </button>
       </span>
     </label>
+  );
+}
+
+function EyeIcon() {
+  return (
+    <svg
+      aria-hidden="true"
+      className="h-5 w-5"
+      fill="none"
+      stroke="currentColor"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth="2"
+      viewBox="0 0 24 24"
+    >
+      <path d="M2.1 12s3.6-7 9.9-7 9.9 7 9.9 7-3.6 7-9.9 7-9.9-7-9.9-7Z" />
+      <circle cx="12" cy="12" r="3" />
+    </svg>
+  );
+}
+
+function EyeOffIcon() {
+  return (
+    <svg
+      aria-hidden="true"
+      className="h-5 w-5"
+      fill="none"
+      stroke="currentColor"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth="2"
+      viewBox="0 0 24 24"
+    >
+      <path d="M3 3l18 18" />
+      <path d="M10.6 10.6A3 3 0 0 0 12 15a3 3 0 0 0 2.4-4.8" />
+      <path d="M9.9 5.2A10.5 10.5 0 0 1 12 5c6.3 0 9.9 7 9.9 7a17.5 17.5 0 0 1-3.1 4" />
+      <path d="M6.1 6.8A17.1 17.1 0 0 0 2.1 12s3.6 7 9.9 7a9.7 9.7 0 0 0 4.1-.9" />
+    </svg>
   );
 }

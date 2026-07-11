@@ -70,20 +70,24 @@ export default async function DashboardPage() {
 
   return (
     <div className="space-y-6">
-      <section className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
-        <p className="text-sm font-medium text-emerald-800">Signed in as {user.email}</p>
-        <h1 className="mt-2 text-2xl font-semibold text-slate-950">
+      <section className="overflow-hidden rounded-lg border border-yellow-500/25 bg-[#0d0b07] p-6 shadow-xl shadow-yellow-950/10">
+        <p className="text-sm font-medium text-yellow-400">Signed in as {user.email}</p>
+        <h1 className="mt-2 text-2xl font-semibold text-yellow-50">
           {user.role.replace("_", " ")} dashboard
         </h1>
+        <p className="mt-2 max-w-2xl text-sm leading-6 text-yellow-100/70">
+          Manage daily operations from a focused workspace tuned for attendance,
+          leave, payroll, and secure account access.
+        </p>
       </section>
 
       <section className="grid gap-4 md:grid-cols-3">
         {cards.map((card) => (
           <article
             key={card.title}
-            className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm"
+            className="rounded-lg border border-yellow-600/20 bg-white p-5 shadow-sm transition hover:-translate-y-1 hover:border-yellow-500/55 hover:shadow-xl hover:shadow-yellow-900/10"
           >
-            <h2 className="text-base font-semibold text-slate-950">{card.title}</h2>
+            <h2 className="text-base font-semibold text-[#161006]">{card.title}</h2>
             <p className="mt-2 text-sm leading-6 text-slate-600">{card.body}</p>
           </article>
         ))}

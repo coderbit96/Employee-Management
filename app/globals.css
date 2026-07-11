@@ -1,8 +1,11 @@
 @import "tailwindcss";
 
 :root {
-  --background: #f7faf9;
-  --foreground: #18201f;
+  --background: #f8faf7;
+  --foreground: #15120a;
+  --gold: #f2b705;
+  --gold-deep: #b77900;
+  --ink: #080806;
 }
 
 @theme inline {
@@ -26,6 +29,199 @@ textarea {
 }
 
 :focus-visible {
-  outline: 3px solid #147d64;
+  outline: 3px solid #f2b705;
   outline-offset: 2px;
+}
+
+button,
+a {
+  transition-property: color, background-color, border-color, box-shadow, transform, opacity;
+  transition-duration: 180ms;
+  transition-timing-function: ease;
+}
+
+button:not(:disabled):hover,
+a:hover {
+  transform: translateY(-1px);
+}
+
+.password-visibility-button:hover {
+  transform: none !important;
+}
+
+.constellation-bg {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 24% 18%, rgba(242, 183, 5, 0.28), transparent 28%),
+    radial-gradient(circle at 78% 32%, rgba(183, 121, 0, 0.24), transparent 26%),
+    linear-gradient(135deg, #050503 0%, #121009 46%, #231800 100%);
+}
+
+.constellation-bg::before,
+.constellation-bg::after {
+  content: "";
+  position: absolute;
+  inset: -20%;
+  background-image:
+    radial-gradient(circle, rgba(255, 219, 119, 0.92) 0 1px, transparent 1.7px),
+    radial-gradient(circle, rgba(255, 247, 214, 0.52) 0 1px, transparent 1.8px);
+  background-position: 0 0, 34px 42px;
+  background-size: 130px 130px, 190px 190px;
+  animation: starDrift 24s linear infinite;
+  opacity: 0.58;
+}
+
+.constellation-bg::after {
+  animation-duration: 38s;
+  animation-direction: reverse;
+  opacity: 0.36;
+}
+
+.constellation-star {
+  position: absolute;
+  z-index: 1;
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: #ffe8a3;
+  box-shadow:
+    0 0 0 6px rgba(242, 183, 5, 0.08),
+    0 0 20px rgba(242, 183, 5, 0.95),
+    0 0 42px rgba(242, 183, 5, 0.28);
+  animation: starTwinkle 3.4s ease-in-out infinite, constellationFloat 9s ease-in-out infinite;
+}
+
+.constellation-star:nth-of-type(3n) {
+  width: 4px;
+  height: 4px;
+  opacity: 0.75;
+}
+
+.constellation-star:nth-of-type(4n) {
+  width: 9px;
+  height: 9px;
+}
+
+.constellation-orbit {
+  position: absolute;
+  width: 48rem;
+  height: 48rem;
+  border: 1px solid rgba(242, 183, 5, 0.18);
+  border-radius: 999px;
+  filter: blur(0.2px);
+  animation: slowSpin 28s linear infinite;
+}
+
+.constellation-orbit-one {
+  left: -12rem;
+  top: -18rem;
+}
+
+.constellation-orbit-two {
+  right: -18rem;
+  bottom: -20rem;
+  animation-duration: 42s;
+  animation-direction: reverse;
+}
+
+.gold-hover {
+  position: relative;
+  overflow: hidden;
+}
+
+.gold-hover::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(120deg, transparent, rgba(255, 234, 173, 0.35), transparent);
+  transform: translateX(-120%);
+  transition: transform 520ms ease;
+}
+
+.gold-hover:hover::before {
+  transform: translateX(120%);
+}
+
+.bg-emerald-700,
+.hover\:bg-emerald-800:hover {
+  background-color: #eab308 !important;
+  color: #111006 !important;
+}
+
+.bg-emerald-800 {
+  background-color: #ca8a04 !important;
+}
+
+.text-emerald-700,
+.text-emerald-800,
+.hover\:text-emerald-900:hover {
+  color: #a16207 !important;
+}
+
+.border-emerald-200 {
+  border-color: #fde68a !important;
+}
+
+.bg-emerald-50 {
+  background-color: #fef3c7 !important;
+}
+
+.shadow-sm:hover,
+.shadow-xl:hover {
+  box-shadow: 0 18px 40px rgba(120, 79, 0, 0.12);
+}
+
+@keyframes starDrift {
+  from {
+    transform: translate3d(0, 0, 0) rotate(0deg);
+  }
+  to {
+    transform: translate3d(60px, -40px, 0) rotate(6deg);
+  }
+}
+
+@keyframes starTwinkle {
+  0%,
+  100% {
+    opacity: 0.48;
+    filter: brightness(0.85);
+  }
+  50% {
+    opacity: 1;
+    filter: brightness(1.22);
+  }
+}
+
+@keyframes constellationFloat {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0) scale(0.92);
+  }
+  50% {
+    transform: translate3d(10px, -14px, 0) scale(1.15);
+  }
+}
+
+@keyframes slowSpin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: 0.001ms !important;
+  }
+
+  button:not(:disabled):hover,
+  a:hover {
+    transform: none;
+  }
 }

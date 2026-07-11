@@ -48,19 +48,21 @@ export function LoginForm() {
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.24 }}
       onSubmit={onSubmit}
-      className="w-full max-w-md rounded-lg border border-emerald-900/10 bg-white p-6 shadow-sm"
+      className="w-full rounded-lg border border-yellow-400/25 bg-black/72 p-6 text-yellow-50 shadow-2xl shadow-yellow-950/40 backdrop-blur-xl"
     >
       <div className="mb-6">
-        <p className="text-sm font-medium text-emerald-800">Secure access</p>
-        <h1 className="mt-2 text-2xl font-semibold text-slate-950">
+        <p className="text-sm font-medium uppercase tracking-[0.24em] text-yellow-400">
+          Secure access
+        </p>
+        <h1 className="mt-2 text-3xl font-semibold text-yellow-50">
           Employee Management System
         </h1>
-        <p className="mt-2 text-sm leading-6 text-slate-600">
+        <p className="mt-3 text-sm leading-6 text-yellow-100/72">
           Sign in with the account created by your Super Admin.
         </p>
       </div>
 
-      <label className="block text-sm font-medium text-slate-800" htmlFor="identifier">
+      <label className="block text-sm font-medium text-yellow-50" htmlFor="identifier">
         Email or employee login ID
       </label>
       <input
@@ -68,7 +70,7 @@ export function LoginForm() {
         value={identifier}
         onChange={(event) => setIdentifier(event.target.value)}
         autoComplete="username"
-        className="mt-2 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-slate-950 shadow-sm"
+        className="mt-2 w-full rounded-md border border-yellow-500/30 bg-yellow-50/95 px-3 py-2 text-slate-950 shadow-sm transition focus:border-yellow-400 focus:ring-4 focus:ring-yellow-400/20"
         required
       />
 
@@ -78,7 +80,8 @@ export function LoginForm() {
         value={password}
         onChange={(event) => setPassword(event.target.value)}
         autoComplete="current-password"
-        className="mt-4 block text-sm font-medium text-slate-800"
+        className="mt-4 block text-sm font-medium text-yellow-50"
+        inputClassName="mt-2 w-full rounded-md border border-yellow-500/30 bg-yellow-50/95 px-3 py-2 pr-16 text-slate-950 shadow-sm transition focus:border-yellow-400 focus:ring-4 focus:ring-yellow-400/20"
       />
 
       {error ? (
@@ -90,13 +93,13 @@ export function LoginForm() {
       <button
         type="submit"
         disabled={loading}
-        className="mt-6 w-full rounded-md bg-emerald-700 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-800 disabled:cursor-not-allowed disabled:bg-slate-400"
+        className="gold-hover mt-6 w-full rounded-md bg-yellow-500 px-4 py-2.5 text-sm font-semibold text-black shadow-lg shadow-yellow-950/30 transition hover:bg-yellow-300 hover:shadow-yellow-500/25 disabled:cursor-not-allowed disabled:bg-slate-500 disabled:text-slate-200"
       >
-        {loading ? "Signing in..." : "Sign in"}
+        <span className="relative z-10">{loading ? "Signing in..." : "Sign in"}</span>
       </button>
       <Link
         href="/forgot-password"
-        className="mt-4 block text-center text-sm font-medium text-emerald-800 hover:text-emerald-900"
+        className="mt-4 block text-center text-sm font-medium text-yellow-300 hover:text-yellow-100"
       >
         Forgot password?
       </Link>
