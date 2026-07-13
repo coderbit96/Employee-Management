@@ -1,6 +1,8 @@
 import mongoose, { Schema, type InferSchemaType, type Model } from "mongoose";
 import { ACCOUNT_STATUSES, PERMISSIONS, ROLES } from "@/types/domain";
 
+const validPermissionSet = new Set<string>(PERMISSIONS);
+
 const UserSchema = new Schema(
   {
     email: {
@@ -78,6 +80,16 @@ const UserSchema = new Schema(
 );
 
 UserSchema.index({ role: 1, status: 1 });
+
+UserSchema.pre("validate", function normalizePermissions() {
+  if (!Array.isArray(this.permissions)) {
+    return;
+  }
+
+  this.permissions = this.permissions.filter((permission) =>
+    validPermissionSet.has(permission),
+  );
+});
 
 export type UserDocument = InferSchemaType<typeof UserSchema> & {
   _id: mongoose.Types.ObjectId;
