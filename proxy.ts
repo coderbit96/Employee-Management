@@ -1,15 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { SESSION_COOKIE_NAME, verifySessionToken } from "@/lib/auth/session";
 
-const VERCEL_HOST_SUFFIX = ".vercel.app";
-const LOCAL_CANONICAL_HOSTS = new Set(["localhost", "127.0.0.1", "0.0.0.0", "[::1]"]);
-
 export async function proxy(request: NextRequest) {
-  const canonicalHostResponse = getCanonicalProductionHostResponse(request);
-  if (canonicalHostResponse) {
-    return canonicalHostResponse;
-  }
-
   const sessionToken = request.cookies.get(SESSION_COOKIE_NAME)?.value;
   const hasSession = Boolean(sessionToken);
   const { pathname } = request.nextUrl;
@@ -75,60 +67,6 @@ export async function proxy(request: NextRequest) {
   }
 
   return response;
-}
-
-function getCanonicalProductionHostResponse(request: NextRequest) {
-  if (process.env.NODE_ENV !== "production") {
-    return null;
-  }
-
-  const requestHost = request.nextUrl.host.toLowerCase();
-  if (!requestHost.endsWith(VERCEL_HOST_SUFFIX)) {
-    return null;
-  }
-
-  const appUrl = process.env.APP_URL;
-  let canonicalUrl: URL;
-  try {
-    canonicalUrl = appUrl ? new URL(appUrl) : new URL("http://localhost");
-  } catch {
-    canonicalUrl = new URL("http://localhost");
-  }
-
-  const canonicalHost = canonicalUrl.host.toLowerCase();
-  const hasUsableCanonicalHost =
-    !LOCAL_CANONICAL_HOSTS.has(canonicalUrl.hostname.toLowerCase()) &&
-    !canonicalHost.endsWith(VERCEL_HOST_SUFFIX);
-
-  if (requestHost === canonicalHost) {
-    return null;
-  }
-
-  if (!hasUsableCanonicalHost) {
-    if (request.nextUrl.pathname.startsWith("/api/")) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: {
-            code: "CANONICAL_HOST_REQUIRED",
-            message: "This production deployment must be opened from the configured production domain.",
-          },
-        },
-        { status: 421 },
-      );
-    }
-
-    return new NextResponse(
-      "This production deployment must be opened from the configured production domain.",
-      { status: 421 },
-    );
-  }
-
-  const redirectUrl = request.nextUrl.clone();
-  redirectUrl.protocol = canonicalUrl.protocol;
-  redirectUrl.host = canonicalUrl.host;
-
-  return NextResponse.redirect(redirectUrl, 308);
 }
 
 export const config = {
