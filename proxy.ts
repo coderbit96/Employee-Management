@@ -5,9 +5,9 @@ const VERCEL_HOST_SUFFIX = ".vercel.app";
 const LOCAL_CANONICAL_HOSTS = new Set(["localhost", "127.0.0.1", "0.0.0.0", "[::1]"]);
 
 export async function proxy(request: NextRequest) {
-  const canonicalRedirect = getCanonicalProductionRedirect(request);
-  if (canonicalRedirect) {
-    return canonicalRedirect;
+  const canonicalHostResponse = getCanonicalProductionHostResponse(request);
+  if (canonicalHostResponse) {
+    return canonicalHostResponse;
   }
 
   const sessionToken = request.cookies.get(SESSION_COOKIE_NAME)?.value;
@@ -77,33 +77,51 @@ export async function proxy(request: NextRequest) {
   return response;
 }
 
-function getCanonicalProductionRedirect(request: NextRequest) {
+function getCanonicalProductionHostResponse(request: NextRequest) {
   if (process.env.NODE_ENV !== "production") {
     return null;
   }
 
-  const appUrl = process.env.APP_URL;
-  if (!appUrl) {
+  const requestHost = request.nextUrl.host.toLowerCase();
+  if (!requestHost.endsWith(VERCEL_HOST_SUFFIX)) {
     return null;
   }
 
+  const appUrl = process.env.APP_URL;
   let canonicalUrl: URL;
   try {
-    canonicalUrl = new URL(appUrl);
+    canonicalUrl = appUrl ? new URL(appUrl) : new URL("http://localhost");
   } catch {
+    canonicalUrl = new URL("http://localhost");
+  }
+
+  const canonicalHost = canonicalUrl.host.toLowerCase();
+  const hasUsableCanonicalHost =
+    !LOCAL_CANONICAL_HOSTS.has(canonicalUrl.hostname.toLowerCase()) &&
+    !canonicalHost.endsWith(VERCEL_HOST_SUFFIX);
+
+  if (requestHost === canonicalHost) {
     return null;
   }
 
-  const requestHost = request.nextUrl.host.toLowerCase();
-  const canonicalHost = canonicalUrl.host.toLowerCase();
+  if (!hasUsableCanonicalHost) {
+    if (request.nextUrl.pathname.startsWith("/api/")) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: {
+            code: "CANONICAL_HOST_REQUIRED",
+            message: "This production deployment must be opened from the configured production domain.",
+          },
+        },
+        { status: 421 },
+      );
+    }
 
-  if (
-    requestHost === canonicalHost ||
-    LOCAL_CANONICAL_HOSTS.has(canonicalUrl.hostname.toLowerCase()) ||
-    !requestHost.endsWith(VERCEL_HOST_SUFFIX) ||
-    canonicalHost.endsWith(VERCEL_HOST_SUFFIX)
-  ) {
-    return null;
+    return new NextResponse(
+      "This production deployment must be opened from the configured production domain.",
+      { status: 421 },
+    );
   }
 
   const redirectUrl = request.nextUrl.clone();
