@@ -1,7 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { SESSION_COOKIE_NAME, verifySessionToken } from "@/lib/auth/session";
 
+const VERCEL_HOST_SUFFIX = ".vercel.app";
+const LOCAL_CANONICAL_HOSTS = new Set(["localhost", "127.0.0.1", "0.0.0.0", "[::1]"]);
+
 export async function proxy(request: NextRequest) {
+  const canonicalRedirect = getCanonicalProductionRedirect(request);
+  if (canonicalRedirect) {
+    return canonicalRedirect;
+  }
+
   const sessionToken = request.cookies.get(SESSION_COOKIE_NAME)?.value;
   const hasSession = Boolean(sessionToken);
   const { pathname } = request.nextUrl;
@@ -69,17 +77,44 @@ export async function proxy(request: NextRequest) {
   return response;
 }
 
+function getCanonicalProductionRedirect(request: NextRequest) {
+  if (process.env.NODE_ENV !== "production") {
+    return null;
+  }
+
+  const appUrl = process.env.APP_URL;
+  if (!appUrl) {
+    return null;
+  }
+
+  let canonicalUrl: URL;
+  try {
+    canonicalUrl = new URL(appUrl);
+  } catch {
+    return null;
+  }
+
+  const requestHost = request.nextUrl.host.toLowerCase();
+  const canonicalHost = canonicalUrl.host.toLowerCase();
+
+  if (
+    requestHost === canonicalHost ||
+    LOCAL_CANONICAL_HOSTS.has(canonicalUrl.hostname.toLowerCase()) ||
+    !requestHost.endsWith(VERCEL_HOST_SUFFIX) ||
+    canonicalHost.endsWith(VERCEL_HOST_SUFFIX)
+  ) {
+    return null;
+  }
+
+  const redirectUrl = request.nextUrl.clone();
+  redirectUrl.protocol = canonicalUrl.protocol;
+  redirectUrl.host = canonicalUrl.host;
+
+  return NextResponse.redirect(redirectUrl, 308);
+}
+
 export const config = {
   matcher: [
-    "/login",
-    "/dashboard",
-    "/users",
-    "/employees",
-    "/payroll",
-    "/reports",
-    "/settings",
-    "/profile",
-    "/audit",
-    "/api/:path*",
+    "/((?!_next/static|_next/image|favicon.ico|.*\\..*).*)",
   ],
 };

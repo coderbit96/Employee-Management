@@ -56,6 +56,11 @@ npm run dev
 
 Open `http://localhost:3000/login`.
 
+## Production URL
+
+Set `APP_URL` to the real production domain, for example `https://your-domain.com`.
+When deployed in production, requests made through a generated `*.vercel.app` host are redirected to `APP_URL` so users do not continue on the Vercel URL.
+
 ## Verification
 
 ```bash
