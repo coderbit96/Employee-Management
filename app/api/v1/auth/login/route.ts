@@ -58,6 +58,12 @@ export async function POST(request: NextRequest) {
       });
     }
 
+    console.error("Unexpected login failure", {
+      requestId: context.requestId,
+      name: error instanceof Error ? error.name : "UnknownError",
+      message: error instanceof Error ? error.message : "Unknown error",
+    });
+
     return apiError("LOGIN_FAILED", "Unable to sign in right now.", {
       status: 500,
       requestId: context.requestId,
