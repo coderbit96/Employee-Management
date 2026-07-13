@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { LoginSuccessToast } from "@/components/layout/login-success-toast";
 import { LogoutButton } from "@/components/layout/logout-button";
 import { getCurrentUser } from "@/lib/auth/session";
 
@@ -16,6 +17,7 @@ export default async function DashboardLayout({
 
   return (
     <div className="min-h-screen bg-[#f8f3df]">
+      <LoginSuccessToast />
       <header className="sticky top-0 z-30 border-b border-yellow-500/20 bg-[#090805]/95 shadow-lg shadow-yellow-950/10 backdrop-blur">
         <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-4 px-4 py-4">
           <div>

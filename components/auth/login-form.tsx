@@ -38,6 +38,7 @@ export function LoginForm() {
       return;
     }
 
+    window.sessionStorage.setItem("ems_login_success", "1");
     router.replace("/dashboard");
     router.refresh();
   }
