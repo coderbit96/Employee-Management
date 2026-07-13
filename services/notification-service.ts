@@ -76,6 +76,16 @@ export async function listNotifications(actor: SafeUser) {
   };
 }
 
+export async function clearNotificationHistory(actor: SafeUser) {
+  await connectToDatabase();
+
+  const result = await Notification.deleteMany({
+    recipientUserId: new Types.ObjectId(actor.id),
+  });
+
+  return { deletedCount: result.deletedCount ?? 0 };
+}
+
 export async function markNotificationRead(notificationId: string, actor: SafeUser) {
   await connectToDatabase();
 

@@ -40,3 +40,19 @@ export async function listAuditLogs(actor: SafeUser) {
     })),
   };
 }
+
+export async function clearAuditLogs(actor: SafeUser) {
+  await connectToDatabase();
+
+  if (actor.role !== "SUPER_ADMIN") {
+    throw new AuditLogServiceError(
+      "INSUFFICIENT_PERMISSION",
+      "Only the Super Admin can clear audit logs.",
+      403,
+    );
+  }
+
+  const result = await AuditLog.deleteMany({});
+
+  return { deletedCount: result.deletedCount ?? 0 };
+}

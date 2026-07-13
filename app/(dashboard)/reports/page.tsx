@@ -32,11 +32,11 @@ export default async function ReportsPage() {
 
   return (
     <div className="space-y-6">
-      <section className="rounded-lg border border-yellow-500/25 bg-[#0d0b07] p-6 shadow-xl shadow-yellow-950/10">
-        <p className="text-sm font-medium text-yellow-400">
+      <section className="dashboard-hero rounded-lg border p-6 shadow-xl">
+        <p className="text-sm font-medium text-cyan-200">
           {summary.scope.replace("_", " ")}
         </p>
-        <h1 className="mt-2 text-2xl font-semibold text-yellow-50">
+        <h1 className="mt-2 text-2xl font-semibold text-white">
           Workforce report
         </h1>
       </section>

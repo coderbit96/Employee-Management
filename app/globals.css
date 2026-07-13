@@ -1,11 +1,11 @@
 @import "tailwindcss";
 
 :root {
-  --background: #f8faf7;
-  --foreground: #15120a;
-  --gold: #f2b705;
-  --gold-deep: #b77900;
-  --ink: #080806;
+  --background: #eef8fc;
+  --foreground: #082344;
+  --gold: #0ea5e9;
+  --gold-deep: #075a9b;
+  --ink: #061a36;
 }
 
 @theme inline {
@@ -29,7 +29,7 @@ textarea {
 }
 
 :focus-visible {
-  outline: 3px solid #f2b705;
+  outline: 3px solid #38c8ff;
   outline-offset: 2px;
 }
 
@@ -50,9 +50,21 @@ a:hover {
 }
 
 .login-page-shell {
-  background: linear-gradient(-45deg, #020201, #0a0802, #2a1a03, #4a3000);
-  background-size: 400% 400%;
-  animation: loginGradientMove 12s ease infinite;
+  background:
+    radial-gradient(circle at 50% 85%, rgba(196, 213, 221, 0.82), transparent 23%),
+    radial-gradient(circle at 50% 48%, rgba(78, 190, 238, 0.42), transparent 32%),
+    linear-gradient(135deg, #173d55 0%, #0d314d 34%, #082343 62%, #061a36 100%);
+}
+
+.auth-blue-shell {
+  background:
+    radial-gradient(circle at 50% 88%, rgba(196, 213, 221, 0.58), transparent 24%),
+    radial-gradient(circle at 50% 42%, rgba(78, 190, 238, 0.34), transparent 34%),
+    linear-gradient(135deg, #173d55 0%, #0d314d 36%, #082343 66%, #061a36 100%);
+}
+
+.login-form-enter {
+  animation: loginFormEnter 240ms ease-out both;
 }
 
 .login-background-animation {
@@ -63,61 +75,64 @@ a:hover {
   pointer-events: none;
 }
 
-.login-blob {
+.login-blue-haze {
   position: absolute;
-  border-radius: 50%;
-  filter: blur(80px);
-  opacity: 0.5;
-  animation: loginBlobMove 15s ease-in-out infinite alternate;
+  border-radius: 999px;
+  filter: blur(30px);
+  opacity: 0.75;
+  mix-blend-mode: screen;
+  animation: loginBlueDrift 10s ease-in-out infinite alternate;
 }
 
-.login-blob-one {
-  top: -100px;
-  left: -100px;
-  width: 400px;
-  height: 400px;
-  background: #b77900;
+.login-blue-haze-one {
+  left: 13%;
+  top: 5%;
+  width: 34rem;
+  height: 34rem;
+  background: radial-gradient(circle, rgba(84, 203, 246, 0.62), transparent 64%);
 }
 
-.login-blob-two {
-  right: -100px;
-  bottom: -80px;
-  width: 350px;
-  height: 350px;
-  background: #f2b705;
-  animation-delay: 2s;
+.login-blue-haze-two {
+  right: 12%;
+  top: 18%;
+  width: 30rem;
+  height: 30rem;
+  background: radial-gradient(circle, rgba(40, 145, 207, 0.52), transparent 66%);
+  animation-delay: -3s;
 }
 
-.login-blob-three {
-  top: 35%;
-  left: 45%;
-  width: 300px;
-  height: 300px;
-  background: #7c4a00;
-  animation-delay: 4s;
+.login-blue-haze-three {
+  left: 34%;
+  bottom: -12%;
+  width: 42rem;
+  height: 18rem;
+  background: radial-gradient(ellipse, rgba(224, 229, 224, 0.58), transparent 68%);
+  animation-delay: -5s;
 }
 
-.login-particles {
+.login-blue-vignette {
   position: absolute;
   inset: 0;
+  background:
+    radial-gradient(circle at 50% 44%, transparent 0 28%, rgba(4, 17, 38, 0.24) 53%, rgba(3, 13, 29, 0.74) 100%),
+    linear-gradient(90deg, rgba(4, 18, 36, 0.54), transparent 28%, transparent 72%, rgba(3, 14, 31, 0.58));
 }
 
-.login-particle {
+.login-blue-floor {
   position: absolute;
-  bottom: -12vh;
-  border-radius: 50%;
-  background: rgba(255, 235, 156, var(--particle-opacity));
-  box-shadow: 0 0 12px rgba(242, 183, 5, 0.8);
-  animation: loginParticleFloat linear infinite;
+  inset: auto 0 0;
+  height: 33%;
+  background: linear-gradient(180deg, transparent, rgba(205, 211, 207, 0.56));
+  opacity: 0.78;
 }
 
 .login-spotlight {
   position: fixed;
   z-index: 1;
-  width: 500px;
-  height: 500px;
+  width: 360px;
+  height: 360px;
   border-radius: 50%;
-  background: radial-gradient(circle, rgba(242, 183, 5, 0.18), transparent 65%);
+  background: radial-gradient(circle, rgba(255, 255, 255, 0.08), transparent 66%);
   opacity: 0;
   pointer-events: none;
   transform: translate(-50%, -50%);
@@ -133,7 +148,7 @@ a:hover {
   content: "";
   position: absolute;
   inset: 0;
-  background: linear-gradient(120deg, transparent, rgba(255, 234, 173, 0.35), transparent);
+  background: linear-gradient(120deg, transparent, rgba(168, 231, 255, 0.42), transparent);
   transform: translateX(-120%);
   transition: transform 520ms ease;
 }
@@ -144,75 +159,279 @@ a:hover {
 
 .bg-emerald-700,
 .hover\:bg-emerald-800:hover {
-  background-color: #eab308 !important;
-  color: #111006 !important;
+  background-color: #075a9b !important;
+  color: #ffffff !important;
 }
 
 .bg-emerald-800 {
-  background-color: #ca8a04 !important;
+  background-color: #064a80 !important;
 }
 
 .text-emerald-700,
 .text-emerald-800,
 .hover\:text-emerald-900:hover {
-  color: #a16207 !important;
+  color: #075a9b !important;
 }
 
 .border-emerald-200 {
-  border-color: #fde68a !important;
+  border-color: #bae6fd !important;
 }
 
 .bg-emerald-50 {
-  background-color: #fef3c7 !important;
+  background-color: #e0f2fe !important;
+}
+
+.border-emerald-300,
+.hover\:border-emerald-500:hover,
+.border-emerald-900\/10 {
+  border-color: #7dd3fc !important;
+}
+
+.bg-emerald-100,
+.hover\:bg-emerald-100:hover {
+  background-color: #bae6fd !important;
+}
+
+.bg-emerald-500 {
+  background-color: #22c3ee !important;
 }
 
 .shadow-sm:hover,
 .shadow-xl:hover {
-  box-shadow: 0 18px 40px rgba(120, 79, 0, 0.12);
+  box-shadow: 0 18px 40px rgba(6, 71, 120, 0.14);
 }
 
-@keyframes loginGradientMove {
-  0% {
-    background-position: 0% 50%;
-  }
-
-  50% {
-    background-position: 100% 50%;
-  }
-
-  100% {
-    background-position: 0% 50%;
-  }
+.bg-white {
+  background-color: rgba(248, 253, 255, 0.94) !important;
 }
 
-@keyframes loginBlobMove {
-  0% {
-    transform: translate(0, 0) scale(1);
-  }
-
-  50% {
-    transform: translate(80px, 50px) scale(1.2);
-  }
-
-  100% {
-    transform: translate(-40px, 100px) scale(0.9);
-  }
+.bg-slate-50 {
+  background-color: #eef8fc !important;
 }
 
-@keyframes loginParticleFloat {
+.border-slate-200,
+.border-slate-300,
+.border-yellow-600\/20,
+.border-yellow-600\/10 {
+  border-color: rgba(125, 211, 252, 0.42) !important;
+}
+
+.hover\:border-yellow-500:hover,
+.hover\:border-yellow-500\/55:hover,
+.hover\:border-yellow-500\/45:hover,
+.hover\:border-slate-500:hover {
+  border-color: rgba(56, 200, 255, 0.78) !important;
+}
+
+.hover\:bg-yellow-50:hover,
+.hover\:bg-yellow-50\/40:hover,
+.bg-yellow-50\/40,
+.hover\:bg-slate-50:hover,
+.hover\:bg-slate-100:hover {
+  background-color: rgba(224, 242, 254, 0.72) !important;
+}
+
+.bg-yellow-500,
+.hover\:bg-yellow-300:hover {
+  background-color: #0ea5e9 !important;
+  color: #ffffff !important;
+}
+
+.text-yellow-800,
+.text-yellow-900,
+.hover\:text-black:hover {
+  color: #075a9b !important;
+}
+
+.hover\:shadow-yellow-900\/10:hover,
+.hover\:shadow-yellow-900\/20:hover,
+.shadow-yellow-900\/10,
+.shadow-yellow-950\/10,
+.shadow-emerald-950\/15 {
+  --tw-shadow-color: rgba(6, 71, 120, 0.18) !important;
+}
+
+.bg-amber-50,
+.hover\:bg-amber-100:hover {
+  background-color: #e0f2fe !important;
+}
+
+.border-amber-200,
+.border-amber-300,
+.hover\:border-amber-500:hover {
+  border-color: #7dd3fc !important;
+}
+
+.text-amber-700,
+.text-amber-800,
+.text-amber-900 {
+  color: #075a9b !important;
+}
+
+.focus\:border-yellow-500:focus {
+  border-color: #38bdf8 !important;
+}
+
+.focus\:ring-yellow-200:focus {
+  --tw-ring-color: rgba(186, 230, 253, 0.85) !important;
+}
+
+.text-\[\#161006\],
+.text-\[\#111006\] {
+  color: #082344 !important;
+}
+
+.dashboard-shell {
+  background:
+    radial-gradient(circle at 50% 0%, rgba(82, 198, 244, 0.18), transparent 28%),
+    radial-gradient(circle at 100% 18%, rgba(34, 137, 203, 0.13), transparent 22%),
+    linear-gradient(180deg, #eaf7fb 0%, #f4fbfd 42%, #f8faf7 100%);
+}
+
+.dashboard-topbar {
+  border-color: rgba(83, 205, 255, 0.24);
+  background:
+    linear-gradient(135deg, rgba(8, 33, 68, 0.97), rgba(10, 59, 96, 0.96) 48%, rgba(7, 28, 58, 0.97));
+  box-shadow:
+    0 14px 34px rgba(4, 24, 54, 0.22),
+    inset 0 -1px 0 rgba(139, 222, 255, 0.12);
+}
+
+.dashboard-nav-link {
+  color: rgba(236, 251, 255, 0.86);
+}
+
+.dashboard-nav-link:hover {
+  background: linear-gradient(135deg, rgba(75, 204, 255, 0.24), rgba(5, 142, 212, 0.58));
+  color: #ffffff;
+  box-shadow: 0 12px 26px rgba(4, 117, 184, 0.22);
+}
+
+.dashboard-logout-button {
+  border-color: rgba(111, 218, 255, 0.44);
+  color: #e8fbff;
+}
+
+.dashboard-logout-button:hover {
+  border-color: rgba(151, 232, 255, 0.8);
+  background: linear-gradient(135deg, #075a9b, #0aa4df);
+  color: #ffffff;
+  box-shadow: 0 12px 28px rgba(4, 117, 184, 0.3);
+}
+
+.dashboard-hero {
+  border-color: rgba(83, 205, 255, 0.34);
+  background:
+    radial-gradient(circle at 12% 20%, rgba(104, 222, 255, 0.18), transparent 28%),
+    radial-gradient(circle at 90% 18%, rgba(50, 154, 218, 0.2), transparent 28%),
+    linear-gradient(135deg, #082344 0%, #0d4065 52%, #071b36 100%);
+  box-shadow:
+    0 18px 46px rgba(6, 39, 79, 0.2),
+    inset 0 1px 0 rgba(194, 243, 255, 0.12);
+}
+
+.login-glass-card {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  min-height: 540px;
+  border: 2px solid rgba(84, 204, 255, 0.72);
+  border-radius: 64px;
+  background:
+    linear-gradient(145deg, rgba(70, 179, 220, 0.32), rgba(36, 125, 176, 0.24) 48%, rgba(129, 214, 238, 0.34));
+  backdrop-filter: blur(18px);
+  box-shadow:
+    0 0 28px rgba(76, 201, 255, 0.5),
+    0 28px 70px rgba(2, 12, 32, 0.36),
+    inset 0 0 32px rgba(160, 233, 255, 0.3);
+}
+
+.login-glass-card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background:
+    linear-gradient(90deg, transparent 0 8%, rgba(67, 209, 255, 0.46) 11%, transparent 15%),
+    linear-gradient(90deg, transparent 85%, rgba(67, 209, 255, 0.5) 90%, transparent 94%);
+  opacity: 0.86;
+  animation: loginCardGlow 4.8s ease-in-out infinite alternate;
+}
+
+.login-field {
+  background: linear-gradient(90deg, rgba(4, 34, 80, 0.94), rgba(5, 88, 153, 0.86));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.06),
+    0 12px 22px rgba(3, 21, 49, 0.12);
+}
+
+.login-field input:-webkit-autofill,
+.login-field input:-webkit-autofill:hover,
+.login-field input:-webkit-autofill:focus {
+  border: 0;
+  -webkit-text-fill-color: #ffffff;
+  caret-color: #ffffff;
+  box-shadow: inset 0 0 0 1000px rgba(5, 67, 127, 0.96);
+  transition: background-color 9999s ease-in-out 0s;
+}
+
+.neon-login-button {
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.14),
+    0 14px 26px rgba(5, 31, 74, 0.32);
+}
+
+.neon-login-button:hover {
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.18),
+    0 16px 30px rgba(22, 126, 198, 0.4);
+}
+
+.login-success-toast {
+  animation: loginToastEnter 180ms ease-out both;
+}
+
+@keyframes loginFormEnter {
   from {
     opacity: 0;
-    transform: translateY(110vh) scale(0.5);
-  }
-
-  20%,
-  80% {
-    opacity: 1;
+    transform: translateY(12px);
   }
 
   to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes loginToastEnter {
+  from {
     opacity: 0;
-    transform: translateY(-20vh) scale(1.3);
+    transform: translateY(-16px) scale(0.98);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes loginBlueDrift {
+  from {
+    transform: translate3d(-2%, -2%, 0) scale(1);
+  }
+
+  to {
+    transform: translate3d(3%, 2%, 0) scale(1.08);
+  }
+}
+
+@keyframes loginCardGlow {
+  from {
+    opacity: 0.55;
+  }
+
+  to {
+    opacity: 1;
   }
 }
 

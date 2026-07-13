@@ -38,24 +38,43 @@ export default async function DashboardPage() {
   }
 
   const showEmployeeTools = ["EMPLOYEE", "HR", "MANAGER"].includes(user.role);
-  const attendance = showEmployeeTools
-    ? await getTodayAttendance(user).catch(() => null)
-    : null;
-  const myLeaveRequests = showEmployeeTools
-    ? await listLeaveRequests(user, { scope: "mine" }).catch(() => ({
-        leaveRequests: [],
-      }))
-    : null;
-  const pendingLeaveRequests = ["SUPER_ADMIN", "ADMIN", "HR"].includes(user.role)
-    ? { leaveRequests: (await Promise.all(["PENDING", "CANCELLATION_PENDING"].map((status) => listLeaveRequests(user, { scope: "inbox", status: status as "PENDING" | "CANCELLATION_PENDING" }).catch(() => ({ leaveRequests: [] }))))).flatMap((item) => item.leaveRequests) }
-    : null;
-  const attendanceRecords = await listAttendanceRecords(user).catch(() => ({
-    records: [],
-  }));
-  const notifications = await listNotifications(user).catch(() => ({
-    notifications: [],
-  }));
-  const corrections = ["SUPER_ADMIN", "ADMIN", "HR"].includes(user.role) ? await listAttendanceCorrections(user).catch(() => ({ corrections: [] })) : null;
+  const canReviewInbox = ["SUPER_ADMIN", "ADMIN", "HR"].includes(user.role);
+
+  const [
+    attendance,
+    myLeaveRequests,
+    pendingLeaveRequests,
+    attendanceRecords,
+    notifications,
+    corrections,
+  ] = await Promise.all([
+    showEmployeeTools ? getTodayAttendance(user).catch(() => null) : null,
+    showEmployeeTools
+      ? listLeaveRequests(user, { scope: "mine" }).catch(() => ({
+          leaveRequests: [],
+        }))
+      : null,
+    canReviewInbox
+      ? Promise.all(
+          (["PENDING", "CANCELLATION_PENDING"] as const).map((status) =>
+            listLeaveRequests(user, { scope: "inbox", status }).catch(() => ({
+              leaveRequests: [],
+            })),
+          ),
+        ).then((items) => ({
+          leaveRequests: items.flatMap((item) => item.leaveRequests),
+        }))
+      : null,
+    listAttendanceRecords(user).catch(() => ({
+      records: [],
+    })),
+    listNotifications(user).catch(() => ({
+      notifications: [],
+    })),
+    canReviewInbox
+      ? listAttendanceCorrections(user).catch(() => ({ corrections: [] }))
+      : null,
+  ]);
 
   if (user.forcePasswordChange) {
     return (
@@ -70,12 +89,12 @@ export default async function DashboardPage() {
 
   return (
     <div className="space-y-6">
-      <section className="overflow-hidden rounded-lg border border-yellow-500/25 bg-[#0d0b07] p-6 shadow-xl shadow-yellow-950/10">
-        <p className="text-sm font-medium text-yellow-400">Signed in as {user.email}</p>
-        <h1 className="mt-2 text-2xl font-semibold text-yellow-50">
+      <section className="dashboard-hero overflow-hidden rounded-lg border p-6 shadow-xl">
+        <p className="text-sm font-medium text-cyan-200">Signed in as {user.email}</p>
+        <h1 className="mt-2 text-2xl font-semibold text-white">
           {user.role.replace("_", " ")} dashboard
         </h1>
-        <p className="mt-2 max-w-2xl text-sm leading-6 text-yellow-100/70">
+        <p className="mt-2 max-w-2xl text-sm leading-6 text-sky-50/78">
           Manage daily operations from a focused workspace tuned for attendance,
           leave, payroll, and secure account access.
         </p>

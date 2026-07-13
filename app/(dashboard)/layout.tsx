@@ -16,52 +16,52 @@ export default async function DashboardLayout({
   }
 
   return (
-    <div className="min-h-screen bg-[#f8f3df]">
+    <div className="dashboard-shell min-h-screen">
       <LoginSuccessToast />
-      <header className="sticky top-0 z-30 border-b border-yellow-500/20 bg-[#090805]/95 shadow-lg shadow-yellow-950/10 backdrop-blur">
+      <header className="dashboard-topbar sticky top-0 z-[1200] border-b backdrop-blur">
         <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-4 px-4 py-4">
           <div>
-            <p className="text-sm font-medium tracking-[0.18em] text-yellow-400">
+            <p className="text-sm font-semibold tracking-[0.18em] text-cyan-200">
               {user.role}
             </p>
-            <p className="text-lg font-semibold text-yellow-50">
+            <p className="text-lg font-semibold text-white">
               Employee Management System
             </p>
           </div>
           <nav className="flex flex-wrap items-center gap-2">
             <Link
               href="/dashboard"
-              className="rounded-md px-3 py-2 text-sm font-medium text-yellow-50/82 transition hover:bg-yellow-400 hover:text-black hover:shadow-lg hover:shadow-yellow-900/30"
+              className="dashboard-nav-link rounded-md px-3 py-2 text-sm font-medium transition"
             >
               Dashboard
             </Link>
             <Link
               href="/users"
-              className="rounded-md px-3 py-2 text-sm font-medium text-yellow-50/82 transition hover:bg-yellow-400 hover:text-black hover:shadow-lg hover:shadow-yellow-900/30"
+              className="dashboard-nav-link rounded-md px-3 py-2 text-sm font-medium transition"
             >
               Users
             </Link>
             <Link
               href="/employees"
-              className="rounded-md px-3 py-2 text-sm font-medium text-yellow-50/82 transition hover:bg-yellow-400 hover:text-black hover:shadow-lg hover:shadow-yellow-900/30"
+              className="dashboard-nav-link rounded-md px-3 py-2 text-sm font-medium transition"
             >
               Employees
             </Link>
             <Link
               href="/payroll"
-              className="rounded-md px-3 py-2 text-sm font-medium text-yellow-50/82 transition hover:bg-yellow-400 hover:text-black hover:shadow-lg hover:shadow-yellow-900/30"
+              className="dashboard-nav-link rounded-md px-3 py-2 text-sm font-medium transition"
             >
               Payroll
             </Link>
             <Link
               href="/audit"
-              className="rounded-md px-3 py-2 text-sm font-medium text-yellow-50/82 transition hover:bg-yellow-400 hover:text-black hover:shadow-lg hover:shadow-yellow-900/30"
+              className="dashboard-nav-link rounded-md px-3 py-2 text-sm font-medium transition"
             >
               Audit
             </Link>
-            <Link href="/reports" className="rounded-md px-3 py-2 text-sm font-medium text-yellow-50/82 transition hover:bg-yellow-400 hover:text-black hover:shadow-lg hover:shadow-yellow-900/30">Reports</Link>
-            <Link href="/settings" className="rounded-md px-3 py-2 text-sm font-medium text-yellow-50/82 transition hover:bg-yellow-400 hover:text-black hover:shadow-lg hover:shadow-yellow-900/30">Settings</Link>
-            <Link href="/profile" className="rounded-md px-3 py-2 text-sm font-medium text-yellow-50/82 transition hover:bg-yellow-400 hover:text-black hover:shadow-lg hover:shadow-yellow-900/30">Profile</Link>
+            <Link href="/reports" className="dashboard-nav-link rounded-md px-3 py-2 text-sm font-medium transition">Reports</Link>
+            <Link href="/settings" className="dashboard-nav-link rounded-md px-3 py-2 text-sm font-medium transition">Settings</Link>
+            <Link href="/profile" className="dashboard-nav-link rounded-md px-3 py-2 text-sm font-medium transition">Profile</Link>
             <LogoutButton />
           </nav>
         </div>

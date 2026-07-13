@@ -199,6 +199,49 @@ export async function listUsers(
   };
 }
 
+export async function clearDeletedUsers(actor: SafeUser, context: RequestContext) {
+  await connectToDatabase();
+
+  if (!canManageUsers(actor)) {
+    throw new UserServiceError(
+      "INSUFFICIENT_PERMISSION",
+      "You cannot manage user accounts.",
+      403,
+    );
+  }
+
+  const deletedUsers = await User.find({
+    _id: { $ne: actor.id },
+    role: { $ne: "SUPER_ADMIN" },
+    status: "DELETED",
+  })
+    .select("_id")
+    .lean();
+
+  const deletedUserIds = deletedUsers.map((user) => user._id);
+
+  if (!deletedUserIds.length) {
+    return { deletedCount: 0 };
+  }
+
+  await Promise.all([
+    EmployeeProfile.deleteMany({ userId: { $in: deletedUserIds } }),
+    User.deleteMany({ _id: { $in: deletedUserIds } }),
+  ]);
+
+  await writeAuditLog({
+    actor,
+    action: "DELETED_USERS_CLEARED",
+    entityType: "User",
+    requestId: context.requestId,
+    ipHash: context.ipHash,
+    userAgent: context.userAgent,
+    summary: { deletedCount: deletedUserIds.length },
+  });
+
+  return { deletedCount: deletedUserIds.length };
+}
+
 async function getManageableUser(targetId: string, actor: SafeUser) {
   if (!canManageUsers(actor)) {
     throw new UserServiceError("INSUFFICIENT_PERMISSION", "You cannot manage user accounts.", 403);

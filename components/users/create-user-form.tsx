@@ -39,14 +39,13 @@ export function CreateUserForm() {
 
     const form = new FormData(formElement);
     const identity = String(form.get("email") ?? "").trim();
-    const loginIdValue = String(form.get("loginId") ?? "").trim();
     const looksLikeEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(identity);
     const response = await fetch("/api/v1/users", {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({
         email: looksLikeEmail ? identity : undefined,
-        loginId: loginIdValue || (!looksLikeEmail ? identity : undefined),
+        loginId: looksLikeEmail ? undefined : identity,
         role: form.get("role"),
         permissions: [],
         password: form.get("password"),
@@ -87,7 +86,6 @@ export function CreateUserForm() {
       </div>
 
       <Field name="email" label="Email or login ID" />
-      <Field name="loginId" label="Login ID" />
       <PasswordInput
         name="password"
         label="Password"

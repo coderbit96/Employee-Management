@@ -13,7 +13,6 @@
   "dependencies": {
     "bcryptjs": "^3.0.3",
     "dotenv": "^17.4.2",
-    "framer-motion": "^12.42.2",
     "jose": "^6.2.3",
     "leaflet": "^1.9.4",
     "mongoose": "^9.7.4",

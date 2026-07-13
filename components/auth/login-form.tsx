@@ -3,8 +3,6 @@
 import { FormEvent, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { motion } from "framer-motion";
-import { PasswordInput } from "@/components/auth/password-input";
 
 type ApiResponse =
   | { success: true; data: { forcePasswordChange: boolean } }
@@ -44,49 +42,67 @@ export function LoginForm() {
   }
 
   return (
-    <motion.form
-      initial={{ opacity: 0, y: 12 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.24 }}
+    <form
       onSubmit={onSubmit}
-      className="w-full rounded-lg border border-yellow-400/25 bg-black/72 p-6 text-yellow-50 shadow-2xl shadow-yellow-950/40 backdrop-blur-xl"
+      className="login-form-enter login-glass-card w-full px-10 pb-12 pt-10 text-white"
     >
-      <div className="mb-6">
-        <p className="text-sm font-medium uppercase tracking-[0.24em] text-yellow-400">
-          JOYDIP GHOSH
-        </p>
-        <h1 className="mt-2 text-3xl font-semibold text-yellow-50">
-          Employee Management System
-        </h1>
-        <p className="mt-3 text-sm leading-6 text-yellow-100/72">
-          Sign in with the account created by your Super Admin.
-        </p>
+      <div className="mx-auto mb-9 flex h-[110px] w-[110px] items-center justify-center rounded-full border-[4px] border-cyan-300/80 text-cyan-200 shadow-[0_0_26px_rgba(60,200,255,0.5)]">
+        <span className="text-3xl font-black tracking-[0.08em]">EMS</span>
       </div>
 
-      <label className="block text-sm font-medium text-yellow-50" htmlFor="identifier">
-        Email or employee login ID
+      <label className="sr-only" htmlFor="identifier">
+        Username
       </label>
-      <input
-        id="identifier"
-        value={identifier}
-        onChange={(event) => setIdentifier(event.target.value)}
-        autoComplete="username"
-        className="mt-2 w-full rounded-md border border-yellow-500/30 bg-yellow-50/95 px-3 py-2 text-slate-950 shadow-sm transition focus:border-yellow-400 focus:ring-4 focus:ring-yellow-400/20"
-        required
-      />
+      <span className="login-field relative block">
+        <span className="pointer-events-none absolute inset-y-0 left-5 flex items-center text-white/85">
+          <UserIcon />
+        </span>
+        <input
+          id="identifier"
+          value={identifier}
+          onChange={(event) => setIdentifier(event.target.value)}
+          autoComplete="username"
+          placeholder="Username"
+          className="h-14 w-full border-0 bg-transparent pl-16 pr-5 text-xl font-semibold tracking-[0.08em] text-white outline-none placeholder:text-white/80 focus:ring-0"
+          required
+        />
+      </span>
 
-      <PasswordInput
-        id="password"
-        label="Password"
-        value={password}
-        onChange={(event) => setPassword(event.target.value)}
-        autoComplete="current-password"
-        className="mt-4 block text-sm font-medium text-yellow-50"
-        inputClassName="mt-2 w-full rounded-md border border-yellow-500/30 bg-yellow-50/95 px-3 py-2 pr-16 text-slate-950 shadow-sm transition focus:border-yellow-400 focus:ring-4 focus:ring-yellow-400/20"
-      />
+      <label className="sr-only" htmlFor="password">
+        Password
+      </label>
+      <span className="login-field relative mt-5 block">
+        <span className="pointer-events-none absolute inset-y-0 left-5 flex items-center text-white/85">
+          <LockIcon />
+        </span>
+        <input
+          id="password"
+          type="password"
+          value={password}
+          onChange={(event) => setPassword(event.target.value)}
+          autoComplete="current-password"
+          placeholder="************"
+          className="h-14 w-full border-0 bg-transparent pl-16 pr-5 text-xl font-semibold tracking-[0.18em] text-white outline-none placeholder:text-white/90 focus:ring-0"
+          required
+        />
+      </span>
+
+      <div className="mt-5 flex items-center justify-between gap-3 text-sm font-semibold text-white/85">
+        <label className="flex items-center gap-2">
+          <input
+            type="checkbox"
+            defaultChecked
+            className="h-4 w-4 rounded-sm border-cyan-200/70 bg-sky-950/60 accent-cyan-300"
+          />
+          Remember me
+        </label>
+        <Link href="/forgot-password" className="italic hover:text-white">
+          Forgot Password?
+        </Link>
+      </div>
 
       {error ? (
-        <p className="mt-4 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+        <p className="mt-4 rounded border border-red-200/70 bg-red-950/45 px-3 py-2 text-xs font-medium text-red-100">
           {error}
         </p>
       ) : null}
@@ -94,16 +110,41 @@ export function LoginForm() {
       <button
         type="submit"
         disabled={loading}
-        className="gold-hover mt-6 w-full rounded-md bg-yellow-500 px-4 py-2.5 text-sm font-semibold text-black shadow-lg shadow-yellow-950/30 transition hover:bg-yellow-300 hover:shadow-yellow-500/25 disabled:cursor-not-allowed disabled:bg-slate-500 disabled:text-slate-200"
+        className="neon-login-button mt-10 h-16 w-full rounded-lg bg-gradient-to-r from-[#07336a] to-[#048ed4] px-6 text-lg font-bold uppercase tracking-[0.32em] text-white shadow-lg transition disabled:cursor-not-allowed disabled:opacity-60"
       >
-        <span className="relative z-10">{loading ? "Signing in..." : "Sign in"}</span>
+        <span className="relative z-10">{loading ? "Signing in..." : "Login"}</span>
       </button>
-      <Link
-        href="/forgot-password"
-        className="mt-4 block text-center text-sm font-medium text-yellow-300 hover:text-yellow-100"
-      >
-        Forgot password?
-      </Link>
-    </motion.form>
+    </form>
+  );
+}
+
+function UserIcon() {
+  return (
+    <svg
+      aria-hidden="true"
+      className="h-5 w-5"
+      fill="currentColor"
+      viewBox="0 0 20 20"
+    >
+      <path d="M10 10a4 4 0 1 0 0-8 4 4 0 0 0 0 8Z" />
+      <path d="M3.5 18a6.5 6.5 0 0 1 13 0H3.5Z" />
+    </svg>
+  );
+}
+
+function LockIcon() {
+  return (
+    <svg
+      aria-hidden="true"
+      className="h-5 w-5"
+      fill="currentColor"
+      viewBox="0 0 20 20"
+    >
+      <path
+        clipRule="evenodd"
+        d="M5 8V6a5 5 0 0 1 10 0v2h1a1 1 0 0 1 1 1v8a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1h1Zm2 0h6V6a3 3 0 1 0-6 0v2Z"
+        fillRule="evenodd"
+      />
+    </svg>
   );
 }
